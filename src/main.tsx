@@ -4,11 +4,12 @@ import App from './App.tsx'
 import './index.css'
 
 // Version logging
-console.log('🎮 Dune Stats Version: v1.2.0')
+console.log('🎮 Dune Stats Version: v1.3.0')
 console.log('📅 Build Date:', new Date().toISOString())
 console.log('🚀 Deployed via GitHub Actions')
-console.log('✨ New: 設定頁面 - API Keys 安全管理 (LocalStorage)')
-console.log('🔒 無需 .env 檔案，直接在網頁輸入配置')
+console.log('✨ New: API Key 加密系統 + 遊戲標題優化')
+console.log('🔐 OpenAI API Key 使用字符位移加密，可安全提交到 git')
+console.log('🏆 歷史記錄標題顯示獲勝者資訊，更直觀易讀')
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

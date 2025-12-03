@@ -63,9 +63,13 @@ export function useFirebase() {
       const games: GameRecord[] = [];
 
       querySnapshot.forEach(doc => {
+        const data = doc.data();
         games.push({
           id: doc.id,
-          ...doc.data(),
+          ...data,
+          // Convert Firestore Timestamp to ISO string for consistent date handling
+          timestamp: data.timestamp?.toDate?.() || data.timestamp,
+          createdAt: data.createdAt?.toDate?.() || data.createdAt,
         } as GameRecord);
       });
 

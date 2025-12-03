@@ -61,9 +61,11 @@ export default function HistoryPage() {
             <Card key={game.id}>
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-xl font-orbitron text-dune-spice">遊戲 #{game.gameNumber}</h3>
+                  <h3 className="text-xl font-orbitron text-dune-spice">
+                    {game.players.find(p => p.isWinner)?.name || '未知玩家'} 用 {game.players.find(p => p.isWinner)?.faction || '未知角色'} 獲勝
+                  </h3>
                   <p className="text-sm text-dune-sand/70 font-rajdhani">
-                    {formatTimestamp(game.timestamp)}
+                    {formatTimestamp(game.timestamp)} • 遊戲 #{game.gameNumber}
                   </p>
                   <div className="mt-4 space-y-2">
                     {game.players.map((player, idx) => (

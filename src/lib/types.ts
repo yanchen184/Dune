@@ -41,10 +41,10 @@ export interface PlayerRecord {
 export interface GameRecord {
   id: string;                      // Firestore document ID
   gameNumber: number;              // Sequential game number (auto-increment)
-  timestamp: Timestamp;            // Game timestamp
+  timestamp: Date | Timestamp;     // Game timestamp (converted to Date when read from Firestore)
   imageUrl?: string;               // Firebase Storage URL (optional)
   players: PlayerRecord[];         // Array of player results
-  createdAt: Timestamp;            // Record creation time
+  createdAt: Date | Timestamp;     // Record creation time (converted to Date when read from Firestore)
   recognitionConfidence?: number;  // AI confidence (0-1)
 }
 

@@ -374,6 +374,16 @@ colors: {
 
 ## 📅 版本歷史
 
+### v1.3.0 (2025-12-03) - API Key 加密系統與 UI 優化
+
+- 🔐 **API Key 加密系統**：使用字符位移算法（+1）加密 OpenAI API Key，可安全提交到 git
+- 🛠️ **加密工具腳本**：提供 `scripts/encrypt-config.js` 方便加密配置
+- 🏆 **遊戲標題優化**：歷史記錄標題從「遊戲 #2」改為「XXX 用 YYY 角色獲勝」
+- 📅 **日期顯示修復**：修復統計頁面「Invalid Date」問題，正確處理 Firestore Timestamp
+- 🎨 **上傳頁面重新設計**：專業的拖放上傳介面，動畫效果，更好的用戶體驗
+- 🐛 **formatTimestamp 增強**：支援 Timestamp、Date、ISO 字符串多種格式
+- ⚙️ **配置優先級優化**：LocalStorage > 環境變數 > 默認加密配置
+
 ### v1.2.0 (2025-12-03) - 設定頁面與 API Keys 管理
 
 - ⚙️ **設定頁面**：全新的設定介面，可直接在網頁輸入 Firebase 和 OpenAI API Keys

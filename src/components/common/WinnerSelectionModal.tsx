@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from './Button';
 
@@ -21,30 +21,28 @@ export default function WinnerSelectionModal({
   onConfirm
 }: WinnerSelectionModalProps) {
   const [selectedIndexes, setSelectedIndexes] = useState<number[]>([]);
+  const prevIsOpenRef = useRef(false);
 
-  // 找出最高分的玩家索引
-  const maxScore = Math.max(...players.map(p => p.score));
-  const tiedPlayers = players
-    .map((p, index) => ({ ...p, index }))
-    .filter(p => p.score === maxScore);
+  // 計算最高分和同分玩家（使用 useMemo 避免不必要的重新計算）
+  const { maxScore, tiedPlayers } = useMemo(() => {
+    const max = Math.max(...players.map(p => p.score));
+    const tied = players
+      .map((p, index) => ({ ...p, index }))
+      .filter(p => p.score === max);
+    return { maxScore: max, tiedPlayers: tied };
+  }, [players]);
 
-  // 初始化選中第一個同分玩家
+  // 只在模態框從關閉變為開啟時初始化選擇
   useEffect(() => {
-    if (isOpen && tiedPlayers.length > 0) {
+    if (isOpen && !prevIsOpenRef.current && tiedPlayers.length > 0) {
       setSelectedIndexes([tiedPlayers[0]?.index ?? 0]);
     }
+    prevIsOpenRef.current = isOpen;
   }, [isOpen, tiedPlayers]);
 
   const togglePlayer = (index: number) => {
-    setSelectedIndexes(prev => {
-      if (prev.includes(index)) {
-        // 至少要選一個
-        if (prev.length === 1) return prev;
-        return prev.filter(i => i !== index);
-      } else {
-        return [...prev, index];
-      }
-    });
+    // 單選模式：直接設置為當前選擇的玩家
+    setSelectedIndexes([index]);
   };
 
   const handleConfirm = () => {
@@ -124,7 +122,7 @@ export default function WinnerSelectionModal({
               </div>
 
               <p className="text-sm text-dune-sand/60 font-rajdhani mb-4">
-                💡 提示：可以選擇多位勝利者（平手）
+                💡 提示：請選擇實際勝利者（單選）
               </p>
 
               <div className="flex gap-4">

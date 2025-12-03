@@ -31,10 +31,31 @@ export async function fileToBase64(file: File): Promise<string> {
 }
 
 /**
- * Format Firestore Timestamp to readable string
+ * Format Firestore Timestamp or Date to readable string
+ * Supports: Firestore Timestamp, Date object, or ISO string
  */
-export function formatTimestamp(timestamp: Timestamp): string {
-  return format(timestamp.toDate(), 'yyyy-MM-dd HH:mm');
+export function formatTimestamp(timestamp: Timestamp | Date | string): string {
+  let date: Date;
+
+  // Handle Firestore Timestamp
+  if (timestamp && typeof timestamp === 'object' && 'toDate' in timestamp) {
+    date = timestamp.toDate();
+  }
+  // Handle Date object
+  else if (timestamp instanceof Date) {
+    date = timestamp;
+  }
+  // Handle ISO string
+  else if (typeof timestamp === 'string') {
+    date = new Date(timestamp);
+  }
+  // Fallback
+  else {
+    console.warn('Invalid timestamp format:', timestamp);
+    return 'Invalid Date';
+  }
+
+  return format(date, 'yyyy-MM-dd HH:mm');
 }
 
 /**
