@@ -5,6 +5,7 @@ import { useFirebase } from '@/hooks/useFirebase';
 import { useGames } from '@/hooks/useGames';
 import { useToast } from '@/hooks/useToast';
 import { Timestamp } from 'firebase/firestore';
+import { PlayerRecord, DuneFaction } from '@/lib/types';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 import FactionCombobox from '@/components/common/FactionCombobox';
@@ -124,8 +125,10 @@ export default function ManualInputPage() {
       }
 
       // 沒有同分，直接標記最高分為贏家
-      const playersWithWinner = playerScores.map(p => ({
-        ...p,
+      const playersWithWinner: PlayerRecord[] = playerScores.map(p => ({
+        name: p.name,
+        faction: p.faction as DuneFaction,
+        score: p.score,
         isWinner: p.score === maxScore,
       }));
 
@@ -157,8 +160,10 @@ export default function ManualInputPage() {
       const { gameNumber, playerScores } = pendingGameData;
 
       // 根據選擇的索引標記勝利者
-      const playersWithWinner = playerScores.map((p: any, index: number) => ({
-        ...p,
+      const playersWithWinner: PlayerRecord[] = playerScores.map((p: any, index: number) => ({
+        name: p.name,
+        faction: p.faction as DuneFaction,
+        score: p.score,
         isWinner: winnerIndexes.includes(index),
       }));
 

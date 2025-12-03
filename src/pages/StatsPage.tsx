@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { Timestamp } from 'firebase/firestore';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useGames } from '@/hooks/useGames';
 import Card from '@/components/common/Card';
@@ -14,14 +15,16 @@ export default function StatsPage() {
     const fStats: Record<string, any> = {};
 
     // 按時間排序遊戲（用於計算連勝連敗）
-    const sortedGames = [...games].sort((a, b) =>
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    );
+    const sortedGames = [...games].sort((a, b) => {
+      const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp as any).getTime();
+      const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp as any).getTime();
+      return timeA - timeB;
+    });
 
     // 追蹤每個玩家的記錄
     const playerRecords: Record<string, any[]> = {};
-    let highestScore = { score: 0, playerName: '', faction: '', timestamp: '' };
-    let lowestScore = { score: Infinity, playerName: '', faction: '', timestamp: '' };
+    let highestScore = { score: 0, playerName: '', faction: '', timestamp: new Date() as Date | Timestamp };
+    let lowestScore = { score: Infinity, playerName: '', faction: '', timestamp: new Date() as Date | Timestamp };
 
     sortedGames.forEach(game => {
       game.players.forEach(player => {
@@ -50,7 +53,7 @@ export default function StatsPage() {
         if (!playerRecords[player.name]) {
           playerRecords[player.name] = [];
         }
-        playerRecords[player.name].push({
+        playerRecords[player.name]!.push({
           isWinner: player.isWinner,
           timestamp: game.timestamp,
           score: player.score,
@@ -112,7 +115,7 @@ export default function StatsPage() {
         let tempWinStart = '';
         let tempLoseStart = '';
 
-        records.forEach((record: any, index: number) => {
+        records.forEach((record: any) => {
           if (record.isWinner) {
             currentWinStreak++;
             currentLoseStreak = 0;
@@ -202,7 +205,6 @@ export default function StatsPage() {
       });
 
       // 連勝成就
-      const streakData = calculateStreaks();
       Object.entries(playerRecords).forEach(([playerName, records]) => {
         let maxWinStreak = 0;
         let currentStreak = 0;
@@ -334,7 +336,9 @@ export default function StatsPage() {
                       角色：{records.highest.faction}
                     </p>
                     <p className="text-sm">
-                      {new Date(records.highest.timestamp).toLocaleDateString('zh-TW')}
+                      {(records.highest.timestamp instanceof Date
+                        ? records.highest.timestamp
+                        : records.highest.timestamp.toDate()).toLocaleDateString('zh-TW')}
                     </p>
                   </div>
                 </div>
@@ -354,7 +358,9 @@ export default function StatsPage() {
                       角色：{records.lowest.faction}
                     </p>
                     <p className="text-sm">
-                      {new Date(records.lowest.timestamp).toLocaleDateString('zh-TW')}
+                      {(records.lowest.timestamp instanceof Date
+                        ? records.lowest.timestamp
+                        : records.lowest.timestamp.toDate()).toLocaleDateString('zh-TW')}
                     </p>
                   </div>
                 </div>

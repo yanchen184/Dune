@@ -374,6 +374,17 @@ colors: {
 
 ## 📅 版本歷史
 
+### v1.3.1 (2025-12-03) - TypeScript 編譯錯誤修復
+
+- 🐛 **修復 Button.tsx 類型衝突**：排除 framer-motion 與 React 原生事件的衝突（onDrag, onAnimationStart）
+- 🐛 **修復 StatsPage.tsx Timestamp 處理**：正確處理 Firestore Timestamp 和 Date 的類型轉換
+- 🐛 **修復 ManualInputPage.tsx 類型斷言**：完善 PlayerRecord[] 和 DuneFaction 類型
+- 🐛 **修復 UploadPage.tsx 類型**：AI 識別結果正確轉換為 PlayerRecord[]
+- 🐛 **修復 useStats.ts 時間處理**：增強 scoreTrend 的時間戳處理邏輯
+- 🐛 **修復 config.ts 默認配置**：添加缺失的 databaseURL 和 measurementId 屬性
+- 🐛 **修復 firebase.ts 空值斷言**：正確處理 db 和 storage 的類型
+- ✅ **GitHub Actions CI/CD 構建成功**：所有 TypeScript 編譯錯誤已修復
+
 ### v1.3.0 (2025-12-03) - API Key 加密系統與 UI 優化
 
 - 🔐 **API Key 加密系統**：使用字符位移算法（+1）加密 OpenAI API Key，可安全提交到 git

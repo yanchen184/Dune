@@ -110,7 +110,9 @@ export function useStats(games: GameRecord[]) {
   const scoreTrend = useMemo(() => {
     return games
       .map(game => ({
-        date: game.timestamp.toDate(),
+        date: game.timestamp instanceof Date
+          ? game.timestamp
+          : (game.timestamp as any).toDate(),
         averageScore:
           game.players.reduce((sum, p) => sum + p.score, 0) / game.players.length,
       }))

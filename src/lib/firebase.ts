@@ -25,7 +25,7 @@ export function initializeFirebase(): { app: FirebaseApp; db: Firestore; storage
       console.log('✅ Firebase initialized successfully');
     }
 
-    return { app, db, storage };
+    return { app, db: db!, storage: storage! };
   } catch (error) {
     console.error('Failed to initialize Firebase:', error);
     return null;

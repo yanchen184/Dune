@@ -6,6 +6,7 @@ import { useStorage } from '@/hooks/useStorage';
 import { useFirebase } from '@/hooks/useFirebase';
 import { useToast } from '@/hooks/useToast';
 import { Timestamp } from 'firebase/firestore';
+import { PlayerRecord, DuneFaction } from '@/lib/types';
 import { validateImageFile } from '@/lib/utils';
 import { MAX_FILE_SIZE } from '@/lib/constants';
 import Card from '@/components/common/Card';
@@ -110,10 +111,10 @@ export default function UploadPage() {
         ...(imageUrl && { imageUrl }), // Only include if defined
         players: result.players.map(p => ({
           name: p.name,
-          faction: p.faction,
+          faction: p.faction as DuneFaction,
           score: p.score,
           isWinner: p.isWinner,
-        })),
+        })) as PlayerRecord[],
         createdAt: Timestamp.now(),
         recognitionConfidence: result.confidence,
       };

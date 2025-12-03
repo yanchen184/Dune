@@ -26,10 +26,12 @@ const DEFAULT_ENCRYPTED_CONFIG = {
     // TODO: 請填入您加密後的 Firebase 配置
     apiKey: '',
     authDomain: '',
+    databaseURL: '',
     projectId: '',
     storageBucket: '',
     messagingSenderId: '',
     appId: '',
+    measurementId: '',
   },
   // Encrypted OpenAI API Key (shift +1)
   openaiApiKey: 'tl-qspk-e3SDNbk8KCn_EWBe2wmPvvkRoE4hEd-Q7Xix9PCDF5zRSDzOIOdo00n2yDfDBYfFHw_ujS30bOU4CmclGKbiRxtjyFdBccvJ7w3kktPEvMyvqn4ILx6GHFZ1ARKeW9u1LqRxcyTBSzclTq6mtPJvNAbaFtdB',
