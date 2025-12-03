@@ -8,9 +8,8 @@ import {
   query,
   orderBy,
   limit,
-  Timestamp,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/lib/firebase';
 import { GameRecord } from '@/lib/types';
 
 export function useFirebase() {
@@ -18,6 +17,9 @@ export function useFirebase() {
    * Add a new game record to Firestore
    */
   const addGame = async (game: Omit<GameRecord, 'id'>): Promise<string> => {
+    const db = getDb();
+    if (!db) throw new Error('Firebase not initialized. Please configure in Settings.');
+
     try {
       const gamesRef = collection(db, 'games');
       const docRef = await addDoc(gamesRef, game);
@@ -32,6 +34,9 @@ export function useFirebase() {
    * Delete a game record from Firestore
    */
   const deleteGame = async (id: string): Promise<void> => {
+    const db = getDb();
+    if (!db) throw new Error('Firebase not initialized. Please configure in Settings.');
+
     try {
       const gameDoc = doc(db, 'games', id);
       await deleteDoc(gameDoc);
@@ -45,6 +50,9 @@ export function useFirebase() {
    * Get all games or limit to a specific number
    */
   const getGames = async (limitCount?: number): Promise<GameRecord[]> => {
+    const db = getDb();
+    if (!db) throw new Error('Firebase not initialized. Please configure in Settings.');
+
     try {
       const gamesRef = collection(db, 'games');
       const q = limitCount
@@ -88,6 +96,9 @@ export function useFirebase() {
    * Update an existing game record
    */
   const updateGame = async (id: string, game: Partial<Omit<GameRecord, 'id'>>): Promise<void> => {
+    const db = getDb();
+    if (!db) throw new Error('Firebase not initialized. Please configure in Settings.');
+
     try {
       const gameDoc = doc(db, 'games', id);
       await updateDoc(gameDoc, game as any);

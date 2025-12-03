@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GameRecord } from '@/lib/types';
+import { GameRecord, DuneFaction } from '@/lib/types';
 import Button from './Button';
 import FactionCombobox from './FactionCombobox';
 
@@ -24,10 +24,24 @@ export default function EditGameModal({ game, isOpen, onClose, onSave }: EditGam
 
   const handlePlayerChange = (index: number, field: 'name' | 'faction' | 'score', value: string | number) => {
     const newPlayers = [...players];
+    const currentPlayer = newPlayers[index];
+    if (!currentPlayer) return;
+
     if (field === 'score') {
-      newPlayers[index] = { ...newPlayers[index], score: Number(value) };
-    } else {
-      newPlayers[index] = { ...newPlayers[index], [field]: value };
+      newPlayers[index] = {
+        ...currentPlayer,
+        score: Number(value)
+      };
+    } else if (field === 'name') {
+      newPlayers[index] = {
+        ...currentPlayer,
+        name: value as string
+      };
+    } else if (field === 'faction') {
+      newPlayers[index] = {
+        ...currentPlayer,
+        faction: value as DuneFaction
+      };
     }
     setPlayers(newPlayers);
   };

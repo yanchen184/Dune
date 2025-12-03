@@ -1,5 +1,5 @@
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
+import { getStorageInstance } from '@/lib/firebase';
 import { generateImageFilename } from '@/lib/utils';
 
 export function useStorage() {
@@ -9,6 +9,9 @@ export function useStorage() {
    * For now, we'll upload directly
    */
   const uploadImage = async (file: File, gameNumber: number): Promise<string> => {
+    const storage = getStorageInstance();
+    if (!storage) throw new Error('Firebase Storage not initialized. Please configure in Settings.');
+
     try {
       const filename = generateImageFilename(gameNumber);
       const storageRef = ref(storage, `game-images/${filename}`);
@@ -38,6 +41,12 @@ export function useStorage() {
    * Delete image from Firebase Storage
    */
   const deleteImage = async (url: string): Promise<void> => {
+    const storage = getStorageInstance();
+    if (!storage) {
+      console.warn('Firebase Storage not initialized');
+      return;
+    }
+
     try {
       // Extract path from URL
       // Firebase Storage URLs format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media&token={token}

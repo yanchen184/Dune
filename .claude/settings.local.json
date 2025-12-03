@@ -33,7 +33,14 @@
       "mcp__chrome-devtools__wait_for",
       "mcp__chrome-devtools__get_console_message",
       "mcp__chrome-devtools__take_screenshot",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(gh repo create:*)",
+      "Bash(curl:*)",
+      "Bash(https://api.github.com/user/repos )",
+      "Bash(https://api.github.com/repos/yanchen184/Dune )"
     ],
     "deny": []
   }

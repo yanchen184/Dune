@@ -1,11 +1,19 @@
 import OpenAI from 'openai';
 import { VisionRecognitionResult } from './types';
+import { getConfig } from './config';
 
-// Initialize OpenAI client
-const client = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true, // Required for client-side usage
-});
+// Get OpenAI client (lazy initialization)
+function getOpenAIClient(): OpenAI {
+  const config = getConfig();
+  if (!config?.openaiApiKey) {
+    throw new Error('OpenAI API Key not configured. Please configure in Settings.');
+  }
+
+  return new OpenAI({
+    apiKey: config.openaiApiKey,
+    dangerouslyAllowBrowser: true, // Required for client-side usage
+  });
+}
 
 /**
  * Analyzes a game result image and extracts player information
@@ -46,8 +54,11 @@ export async function analyzeGameImage(
 `;
 
   try {
+    const client = getOpenAIClient();
+    const config = getConfig();
+
     console.log('🤖 Calling OpenAI Vision API...');
-    console.log('📝 API Key configured:', !!import.meta.env.VITE_OPENAI_API_KEY);
+    console.log('📝 API Key configured:', !!config?.openaiApiKey);
     console.log('🖼️ Image size (base64):', Math.round(imageBase64.length / 1024), 'KB');
 
     const response = await client.chat.completions.create({
@@ -110,6 +121,3 @@ export async function analyzeGameImage(
     throw new Error('Failed to analyze image. Please try again or enter data manually.');
   }
 }
-
-export { client };
-export default client;

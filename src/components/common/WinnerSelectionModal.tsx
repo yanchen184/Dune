@@ -31,9 +31,9 @@ export default function WinnerSelectionModal({
   // 初始化選中第一個同分玩家
   useEffect(() => {
     if (isOpen && tiedPlayers.length > 0) {
-      setSelectedIndexes([tiedPlayers[0].index]);
+      setSelectedIndexes([tiedPlayers[0]?.index ?? 0]);
     }
-  }, [isOpen]);
+  }, [isOpen, tiedPlayers]);
 
   const togglePlayer = (index: number) => {
     setSelectedIndexes(prev => {

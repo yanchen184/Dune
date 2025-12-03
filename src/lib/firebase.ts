@@ -1,26 +1,54 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-import { getAnalytics } from 'firebase/analytics';
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { getConfig } from './config';
 
-// Firebase configuration from environment variables
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
-};
+let app: FirebaseApp | null = null;
+let db: Firestore | null = null;
+let storage: FirebaseStorage | null = null;
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase with configuration
+export function initializeFirebase(): { app: FirebaseApp; db: Firestore; storage: FirebaseStorage } | null {
+  const config = getConfig();
 
-// Initialize Firebase services
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-export const analytics = getAnalytics(app);
+  if (!config) {
+    console.warn('Firebase configuration not found. Please configure in Settings.');
+    return null;
+  }
+
+  try {
+    // Initialize Firebase if not already initialized
+    if (!app) {
+      app = initializeApp(config.firebase);
+      db = getFirestore(app);
+      storage = getStorage(app);
+      console.log('✅ Firebase initialized successfully');
+    }
+
+    return { app, db, storage };
+  } catch (error) {
+    console.error('Failed to initialize Firebase:', error);
+    return null;
+  }
+}
+
+// Get Firebase services (lazy initialization)
+export function getFirebaseServices() {
+  if (!app || !db || !storage) {
+    return initializeFirebase();
+  }
+  return { app, db, storage };
+}
+
+// Export getters for backward compatibility
+export function getDb(): Firestore | null {
+  const services = getFirebaseServices();
+  return services?.db || null;
+}
+
+export function getStorageInstance(): FirebaseStorage | null {
+  const services = getFirebaseServices();
+  return services?.storage || null;
+}
 
 export default app;

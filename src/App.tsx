@@ -6,6 +6,7 @@ import UploadPage from './pages/UploadPage'
 import ManualInputPage from './pages/ManualInputPage'
 import HistoryPage from './pages/HistoryPage'
 import StatsPage from './pages/StatsPage'
+import SettingsPage from './pages/SettingsPage'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
               <Route path="/manual" element={<ManualInputPage />} />
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/stats" element={<StatsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </AnimatePresence>
         </main>
