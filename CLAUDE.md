@@ -1,59 +1,486 @@
-### 🔄 Project Awareness & Context
-- **Always read `PLANNING.md`** at the start of a new conversation to understand the project's architecture, goals, style, and constraints.
-- **Check `TASK.md`** before starting a new task. If the task isn’t listed, add it with a brief description and today's date.
-- **Use consistent naming conventions, file structure, and architecture patterns** as described in `PLANNING.md`.
-- **Use venv_linux** (the virtual environment) whenever executing Python commands, including for unit tests.
+# Dune Game Stats - 專案開發指南
 
-### 🧱 Code Structure & Modularity
-- **Never create a file longer than 500 lines of code.** If a file approaches this limit, refactor by splitting it into modules or helper files.
-- **Organize code into clearly separated modules**, grouped by feature or responsibility.
-  For agents this looks like:
-    - `agent.py` - Main agent definition and execution logic 
-    - `tools.py` - Tool functions used by the agent 
-    - `prompts.py` - System prompts
-- **Use clear, consistent imports** (prefer relative imports within packages).
-- **Use clear, consistent imports** (prefer relative imports within packages).
-- **Use python_dotenv and load_env()** for environment variables.
+## 🎯 專案概述
 
-### 🧪 Testing & Reliability
-- **Always create Pytest unit tests for new features** (functions, classes, routes, etc).
-- **After updating any logic**, check whether existing unit tests need to be updated. If so, do it.
-- **Tests should live in a `/tests` folder** mirroring the main app structure.
-  - Include at least:
-    - 1 test for expected use
-    - 1 edge case
-    - 1 failure case
+這是一個使用 **React + TypeScript + Firebase + OpenAI Vision API** 打造的沙丘桌遊勝負結算統計系統。
 
-### ✅ Task Completion
-- **Mark completed tasks in `TASK.md`** immediately after finishing them.
-- Add new sub-tasks or TODOs discovered during development to `TASK.md` under a “Discovered During Work” section.
+**核心特色**：
+- 🤖 **AI 圖片自動識別** - 上傳結算截圖自動填入遊戲記錄
+- 📊 **豐富統計數據** - 玩家勝率、角色統計、分數趨勢
+- ✨ **浮誇視覺設計** - 沙丘主題配色 + GSAP/Framer Motion 動畫
+- 🔥 **Firebase 即時同步** - Firestore + Storage 完整整合
 
-### 📎 Style & Conventions
-- **Use Python** as the primary language.
-- **Follow PEP8**, use type hints, and format with `black`.
-- **Use `pydantic` for data validation**.
-- Use `FastAPI` for APIs and `SQLAlchemy` or `SQLModel` for ORM if applicable.
-- Write **docstrings for every function** using the Google style:
-  ```python
-  def example():
-      """
-      Brief summary.
+---
 
-      Args:
-          param1 (type): Description.
+## 📚 專案文檔與規劃
 
-      Returns:
-          type: Description.
-      """
-  ```
+### 🔄 專案意識與上下文
+- **在開始新對話時，務必閱讀 `INITIAL.md`**，理解專案架構、目標、風格和約束
+- **開始新任務前，檢查 `TASK.md`**。如果任務未列出，請添加任務描述和今天的日期
+- **遵循 `INITIAL.md` 中描述的命名規範、檔案結構和架構模式**
+- **所有開發必須遵循全局 CLAUDE.md 中的最佳實踐**
 
-### 📚 Documentation & Explainability
-- **Update `README.md`** when new features are added, dependencies change, or setup steps are modified.
-- **Comment non-obvious code** and ensure everything is understandable to a mid-level developer.
-- When writing complex logic, **add an inline `# Reason:` comment** explaining the why, not just the what.
+### 📖 必讀文檔
+1. **INITIAL.md** - 完整的功能需求和技術規格
+2. **START.md** - 專案啟動和部署說明（需在專案完成後生成）
+3. **README.md** - 專案介紹和設定指南（需在專案完成後生成）
 
-### 🧠 AI Behavior Rules
-- **Never assume missing context. Ask questions if uncertain.**
-- **Never hallucinate libraries or functions** – only use known, verified Python packages.
-- **Always confirm file paths and module names** exist before referencing them in code or tests.
-- **Never delete or overwrite existing code** unless explicitly instructed to or if part of a task from `TASK.md`.
+---
+
+## 🧱 代碼結構與模組化
+
+### 檔案組織原則
+- **永遠不要創建超過 500 行代碼的檔案**。如果接近此限制，請按功能或職責拆分成模組
+- **將代碼組織成清晰分離的模組**，按功能或職責分組
+- **使用清晰一致的導入**（優先使用別名導入 `@/` 而非相對路徑）
+- **所有環境變數使用 `import.meta.env` 訪問**（Vite 規範）
+
+### React 組件結構標準
+每個功能模組應包含：
+```
+components/FeatureName/
+├── index.tsx              # 主組件入口
+├── FeatureName.tsx        # 組件實現
+├── FeatureName.types.ts   # TypeScript 類型定義
+├── FeatureName.hooks.ts   # 自定義 Hooks（如需要）
+└── FeatureName.test.tsx   # 測試文件（必須）
+```
+
+### 資料夾結構（必須遵守）
+```
+src/
+├── components/           # UI 組件
+│   ├── Dashboard/       # 儀表板
+│   ├── Upload/          # 圖片上傳
+│   ├── GameRecord/      # 遊戲記錄
+│   ├── Statistics/      # 統計圖表
+│   └── common/          # 共用組件（Button, Card, etc.）
+├── hooks/               # 自定義 Hooks
+│   ├── useFirebase.ts   # Firebase 操作
+│   ├── useVision.ts     # OpenAI Vision API
+│   └── useGames.ts      # 遊戲資料管理
+├── lib/                 # 工具函數和配置
+│   ├── firebase.ts      # Firebase 初始化
+│   ├── openai.ts        # OpenAI 配置
+│   ├── types.ts         # 全局類型定義
+│   └── utils.ts         # 工具函數
+├── pages/               # 頁面組件（如使用 React Router）
+├── styles/              # 全局樣式
+└── App.tsx              # 主應用
+```
+
+---
+
+## 🧪 測試與可靠性
+
+### E2E 測試（Playwright - 必須）
+- **每個新功能都必須創建 Playwright E2E 測試**
+- **測試應該覆蓋主要用戶流程**：
+  1. 上傳圖片 → AI 識別 → 確認提交
+  2. 查看遊戲記錄 → 撤回刪除
+  3. 查看統計數據
+- **測試文件位置**：`e2e/` 資料夾
+- **測試配置**：`playwright.config.ts`
+
+### 測試最低要求
+每個功能至少包含：
+- ✅ 1 個正常流程測試
+- ✅ 1 個邊界情況測試
+- ✅ 1 個錯誤處理測試
+
+### 測試執行（部署前必須）
+```bash
+# 執行所有測試
+npm run test
+
+# UI 模式（推薦）
+npm run test:ui
+
+# 有頭模式（實際看到瀏覽器）
+npm run test:headed
+```
+
+---
+
+## ✅ 任務完成標準
+
+### TASK.md 管理
+- **立即標記完成的任務**
+- **在開發過程中發現的新子任務或待辦事項，添加到 `TASK.md` 的「開發中發現」區域**
+
+### 任務完成檢查清單
+完成任務前，必須確認：
+- [ ] 功能正常運作（本地測試）
+- [ ] TypeScript 無類型錯誤
+- [ ] ESLint 無警告或錯誤
+- [ ] Playwright 測試通過
+- [ ] MCP Chrome DevTools 檢查無 Console 錯誤
+- [ ] 響應式設計正常（手機、平板、桌面）
+- [ ] 已更新相關文檔（如 README.md）
+
+---
+
+## 📎 風格與慣例
+
+### TypeScript 規範
+- **使用 TypeScript**，禁止使用 `any`（除非必要且有註解說明）
+- **所有組件必須定義 Props Interface**
+- **使用類型斷言而非 any**
+- **優先使用 `interface` 而非 `type`（除非需要聯合類型）
+
+### 組件編寫規範
+```tsx
+// ✅ 正確範例
+interface GameCardProps {
+  game: GameRecord;
+  onDelete: (id: string) => void;
+}
+
+export const GameCard: React.FC<GameCardProps> = ({ game, onDelete }) => {
+  // 組件邏輯
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      {/* 內容 */}
+    </motion.div>
+  );
+};
+```
+
+### 命名規範
+- **組件**：PascalCase（例：`GameCard.tsx`）
+- **Hooks**：camelCase，use 開頭（例：`useGames.ts`）
+- **工具函數**：camelCase（例：`formatDate.ts`）
+- **常量**：UPPER_SNAKE_CASE（例：`MAX_FILE_SIZE`）
+- **類型/介面**：PascalCase（例：`GameRecord`）
+
+### CSS 與樣式
+- **使用 Tailwind CSS v3**（不使用 v4）
+- **優先使用 Tailwind 工具類**，避免自定義 CSS
+- **複雜樣式使用 `@apply` 指令**
+- **動畫使用 Framer Motion 或 GSAP**
+
+### 註解與文檔
+- **為每個組件添加簡要說明註解**
+- **複雜邏輯必須添加 `// Reason:` 註解**，解釋為什麼這樣做
+- **所有 Hooks 和工具函數必須有 JSDoc 註解**
+
+```typescript
+/**
+ * 分析遊戲結算圖片並提取玩家資訊
+ * @param imageFile - 上傳的圖片檔案
+ * @returns 包含玩家資訊和識別信心度的 Promise
+ */
+export const analyzeGameImage = async (imageFile: File): Promise<RecognitionResult> => {
+  // 實現邏輯
+};
+```
+
+---
+
+## 🔥 Firebase 整合規範
+
+### Firebase 初始化
+- **在 `lib/firebase.ts` 中統一初始化 Firebase**
+- **環境變數必須以 `VITE_` 開頭**（Vite 規範）
+- **不要在多個地方重複初始化 Firebase**
+
+### Firestore 操作最佳實踐
+```typescript
+// ✅ 正確：使用 TypeScript 類型
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import type { GameRecord } from '@/lib/types';
+
+const gamesRef = collection(db, 'games');
+const newGame: Omit<GameRecord, 'id'> = {
+  gameNumber: 42,
+  timestamp: Timestamp.now(),
+  players: [...],
+  createdAt: Timestamp.now(),
+};
+await addDoc(gamesRef, newGame);
+```
+
+### Firebase Storage
+- **圖片上傳前必須壓縮**（< 500KB）
+- **使用有意義的檔名**（例：`game-{gameNumber}-{timestamp}.webp`）
+- **設定適當的 metadata**
+
+### Firebase Security Rules（部署前必須設定）
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /games/{gameId} {
+      allow read: if true;  // 公開讀取
+      allow write: if request.auth != null;  // 需要驗證
+    }
+  }
+}
+```
+
+---
+
+## 🤖 OpenAI Vision API 整合
+
+### API 呼叫規範
+- **API Key 必須存在環境變數中**，不得硬編碼
+- **錯誤處理必須完整**（網路錯誤、API 限制錯誤）
+- **添加 retry 機制**（最多重試 3 次）
+
+### Vision API Prompt 設計原則
+- **明確指定返回格式（JSON）**
+- **提供範例輸出**
+- **說明邊界情況處理方式**（無法識別時返回 null）
+
+---
+
+## 🎨 UI/UX 設計規範
+
+### 沙丘主題配色（必須遵守）
+```typescript
+// tailwind.config.js
+export default {
+  theme: {
+    extend: {
+      colors: {
+        dune: {
+          sand: '#D4A574',      // 沙漠金
+          spice: '#FF6B35',     // 香料橘
+          deep: '#1A1A2E',      // 深藍
+          sky: '#16213E',       // 天空藍
+          dark: '#0F0E17',      // 深黑
+        },
+      },
+    },
+  },
+};
+```
+
+### 動畫要求
+- **頁面切換**：使用 Framer Motion 的 `AnimatePresence`
+- **卡片 hover**：3D tilt 效果（可使用 `react-tilt`）
+- **數字滾動**：統計數據使用 `react-countup`
+- **載入動畫**：自定義沙蟲 Loading 動畫（使用 GSAP）
+
+### 響應式斷點
+```typescript
+// 使用 Tailwind 斷點
+sm: 640px   // 手機
+md: 768px   // 平板
+lg: 1024px  // 小桌面
+xl: 1280px  // 桌面
+2xl: 1536px // 大桌面
+```
+
+---
+
+## 🚀 部署與 CI/CD
+
+### GitHub Actions 自動部署（必須配置）
+- **配置文件位置**：`.github/workflows/deploy.yml`
+- **觸發條件**：推送到 `main` 分支
+- **部署目標**：GitHub Pages
+- **Node.js 版本**：22.12.0 LTS
+
+### 部署前檢查清單
+```bash
+# 1. 執行建置
+npm run build
+
+# 2. 預覽建置版本
+npm run preview
+
+# 3. 執行測試
+npm run test
+
+# 4. 檢查 TypeScript
+npx tsc --noEmit
+
+# 5. 檢查 ESLint
+npm run lint
+```
+
+### Vite 配置要點
+```typescript
+// vite.config.ts
+export default defineConfig({
+  base: '/Dune/',  // 替換為你的 repo 名稱
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': '/src',
+    },
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+  },
+});
+```
+
+---
+
+## 🧠 AI 行為規則
+
+### 開發原則
+- **永遠不要假設缺失的上下文。如果不確定，請提問**
+- **不要憑空捏造庫或函數** - 只使用已知、已驗證的 npm 套件
+- **在引用之前，務必確認檔案路徑和模組名稱存在**
+- **除非明確指示或是 `TASK.md` 中的任務，否則不要刪除或覆蓋現有代碼**
+
+### 使用專業 Agents（重要！）
+當遇到以下情況時，**必須使用 Task 工具啟動專業 Agent**：
+
+| 任務類型 | 使用 Agent |
+|---------|-----------|
+| React 組件開發 | `react-frontend-engineer` 或 `react-firebase-engineer` |
+| UI/UX 設計改善 | `frontend-ui-designer` |
+| Firebase 整合 | `react-firebase-engineer` |
+| 系統架構分析 | `system-analyst` |
+| 專案規劃 | `project-manager` |
+| 品質檢查 | `qa-engineer` |
+
+**範例**：
+```
+用戶：「我需要實作圖片上傳組件」
+我：「我將使用 react-firebase-engineer Agent 來實作這個組件」
+[使用 Task 工具啟動 react-firebase-engineer]
+```
+
+---
+
+## 📦 依賴套件管理
+
+### 必須使用的穩定版本
+```json
+{
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "firebase": "^10.0.0",
+    "framer-motion": "^11.0.0",
+    "gsap": "^3.12.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0",
+    "postcss": "^8.4.0",
+    "autoprefixer": "^10.4.0",
+    "@playwright/test": "^1.40.0",
+    "typescript": "^5.3.0",
+    "vite": "^6.0.0"
+  }
+}
+```
+
+### 安裝套件注意事項
+- **明確指定主版本號**（避免安裝 beta/rc 版本）
+- **Tailwind CSS 使用 v3**，不使用 v4
+- **安裝前檢查官方文檔確認最新穩定版**
+
+---
+
+## 🔍 MCP Chrome DevTools 檢查（強制）
+
+### 開發階段檢查項目
+每次修改代碼後，必須使用 MCP Chrome DevTools 檢查：
+- ✅ Console 無錯誤或警告
+- ✅ 網路請求全部成功（200-299）
+- ✅ Firebase 操作正常（Firestore 讀寫、Storage 上傳）
+- ✅ OpenAI API 呼叫成功
+- ✅ 所有圖片、樣式、字體正確載入
+- ✅ 響應式設計在不同視窗大小正常
+
+### 檢查流程
+```bash
+# 1. 啟動開發伺服器
+npm run dev
+
+# 2. 使用 MCP Chrome DevTools 檢查
+# - 開啟 http://localhost:5173
+# - 檢查 Console
+# - 檢查 Network
+# - 測試功能
+```
+
+---
+
+## 📝 Git 工作流程
+
+### Commit 訊息規範
+使用語義化提交訊息（Conventional Commits）：
+```
+feat: 新增圖片上傳功能
+fix: 修復 Firebase 連接錯誤
+docs: 更新 README.md
+style: 調整卡片樣式
+refactor: 重構遊戲記錄組件
+test: 新增 E2E 測試
+chore: 更新依賴套件
+```
+
+### 版本管理
+- **每次部署必須更新版本號**
+- **版本號顯示在 Console**
+- **建立 Git Tag**
+
+```bash
+# 更新版本號
+npm version patch  # 或 minor / major
+
+# 在代碼中輸出版本
+console.log('🎮 Dune Stats Version: v1.0.0');
+console.log('📅 Build Date:', new Date().toISOString());
+```
+
+---
+
+## 🎯 專案完成標準
+
+專案只有在滿足以下所有條件時才算完成：
+
+### 功能完整性
+- ✅ 圖片上傳和 AI 識別正常運作
+- ✅ AI 識別準確率 > 80%（測試至少 10 張圖片）
+- ✅ 撤回功能正常
+- ✅ 統計數據正確計算和顯示
+- ✅ 響應式設計完美適配所有裝置
+
+### 程式碼品質
+- ✅ TypeScript 無 any 類型（除非必要）
+- ✅ 所有組件有 Props Interface 定義
+- ✅ 無 ESLint 錯誤或警告
+- ✅ 程式碼有適當註解
+
+### 測試與驗證
+- ✅ Playwright E2E 測試全部通過
+- ✅ MCP Chrome DevTools 檢查無錯誤
+- ✅ 無 Console 錯誤或警告
+
+### 部署
+- ✅ GitHub Actions 自動部署成功
+- ✅ GitHub Pages 網站正常運行
+- ✅ Repository About 包含網站連結
+- ✅ START.md 和 README.md 完整詳細
+
+### 效能
+- ✅ 首次載入時間 < 3 秒
+- ✅ 圖片識別時間 < 10 秒
+- ✅ Lighthouse 效能分數 > 90
+
+---
+
+## 📚 參考資源
+
+- **Firebase Docs**: https://firebase.google.com/docs
+- **OpenAI Vision API**: https://platform.openai.com/docs/guides/vision
+- **React 19**: https://react.dev/
+- **Tailwind CSS v3**: https://tailwindcss.com/docs
+- **Framer Motion**: https://www.framer.com/motion/
+- **Playwright**: https://playwright.dev/
+
+---
+
+**記住：專業的事交給專業的 Agent！確保代碼品質最高、最符合最佳實踐。**
