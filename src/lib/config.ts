@@ -19,22 +19,22 @@ export interface AppConfig {
 
 const CONFIG_KEY = 'dune_app_config';
 
-// Default encrypted configuration (can be committed to git)
-// Uses simple character shift encryption (+1 for letters and numbers)
-const DEFAULT_ENCRYPTED_CONFIG = {
+// Default configuration (can be committed to git)
+// Firebase config is in plaintext (protected by Firebase security rules)
+// OpenAI API Key is encrypted using character shift (+1)
+const DEFAULT_CONFIG = {
   firebase: {
-    // TODO: 請填入您加密後的 Firebase 配置
-    apiKey: '',
-    authDomain: '',
-    databaseURL: '',
-    projectId: '',
-    storageBucket: '',
-    messagingSenderId: '',
-    appId: '',
-    measurementId: '',
+    apiKey: 'AIzaSyCPYykTmxJu9znACHIXw0XvOUFozBGZA3M',
+    authDomain: 'dune-7e2b9.firebaseapp.com',
+    databaseURL: 'https://dune-7e2b9-default-rtdb.asia-southeast1.firebasedatabase.app',
+    projectId: 'dune-7e2b9',
+    storageBucket: 'dune-7e2b9.firebasestorage.app',
+    messagingSenderId: '173857146074',
+    appId: '1:173857146074:web:5825bf6bb4e1ce2bde91e3',
+    measurementId: 'G-DRYHX3SV1T',
   },
   // Encrypted OpenAI API Key (shift +1)
-  openaiApiKey: 'tl-qspk-e3SDNbk8KCn_EWBe2wmPvvkRoE4hEd-Q7Xix9PCDF5zRSDzOIOdo00n2yDfDBYfFHw_ujS30bOU4CmclGKbiRxtjyFdBccvJ7w3kktPEvMyvqn4ILx6GHFZ1ARKeW9u1LqRxcyTBSzclTq6mtPJvNAbaFtdB',
+  encryptedOpenAIKey: 'tl-qspk-e3SDNbk8KCn_EWBe2wmPvvkRoE4hEd-Q7Xix9PCDF5zRSDzOIOdo00n2yDfDBYfFHw_ujS30bOU4CmclGKbiRxtjyFdBccvJ7w3kktPEvMyvqn4ILx6GHFZ1ARKeW9u1LqRxcyTBSzclTq6mtPJvNAbaFtdB',
 };
 
 // Get configuration from localStorage or environment variables
@@ -66,25 +66,12 @@ export function getConfig(): AppConfig | null {
     };
   }
 
-  // Third fallback: default encrypted configuration (decrypted at runtime)
-  if (DEFAULT_ENCRYPTED_CONFIG.openaiApiKey && DEFAULT_ENCRYPTED_CONFIG.firebase.apiKey) {
-    console.log('🔓 Using default encrypted configuration');
+  // Third fallback: default configuration (Firebase plaintext + encrypted OpenAI Key)
+  if (DEFAULT_CONFIG.encryptedOpenAIKey && DEFAULT_CONFIG.firebase.apiKey) {
+    console.log('🔓 Using default configuration (Firebase + encrypted OpenAI Key)');
     return {
-      firebase: {
-        apiKey: decryptKey(DEFAULT_ENCRYPTED_CONFIG.firebase.apiKey),
-        authDomain: decryptKey(DEFAULT_ENCRYPTED_CONFIG.firebase.authDomain),
-        databaseURL: DEFAULT_ENCRYPTED_CONFIG.firebase.databaseURL
-          ? decryptKey(DEFAULT_ENCRYPTED_CONFIG.firebase.databaseURL)
-          : undefined,
-        projectId: decryptKey(DEFAULT_ENCRYPTED_CONFIG.firebase.projectId),
-        storageBucket: decryptKey(DEFAULT_ENCRYPTED_CONFIG.firebase.storageBucket),
-        messagingSenderId: decryptKey(DEFAULT_ENCRYPTED_CONFIG.firebase.messagingSenderId),
-        appId: decryptKey(DEFAULT_ENCRYPTED_CONFIG.firebase.appId),
-        measurementId: DEFAULT_ENCRYPTED_CONFIG.firebase.measurementId
-          ? decryptKey(DEFAULT_ENCRYPTED_CONFIG.firebase.measurementId)
-          : undefined,
-      },
-      openaiApiKey: decryptKey(DEFAULT_ENCRYPTED_CONFIG.openaiApiKey),
+      firebase: DEFAULT_CONFIG.firebase,
+      openaiApiKey: decryptKey(DEFAULT_CONFIG.encryptedOpenAIKey),
     };
   }
 
