@@ -237,6 +237,294 @@ service cloud.firestore {
 
 ---
 
+## 🔐 API Key 加密系統
+
+### 概述
+
+本專案使用**位置基礎加密算法**來保護 OpenAI API Key，允許將加密後的 Key 安全地提交到 git，同時避免明文暴露。
+
+**核心原則**：
+- ✅ 加密後的 API Key 可以安全提交到 git
+- ✅ 用戶 clone 後可以直接使用，無需配置
+- ✅ 不在 git 歷史中留下明文 token
+- ⚠️ 這是「隱藏」而非「絕對安全」，適合個人專案
+
+---
+
+### 加密算法說明
+
+**位置基礎位移加密（Position-Based Shift Encryption）**
+
+```
+規則：
+- 偶數位置（0, 2, 4, 6...）：字符位移 +2
+- 奇數位置（1, 3, 5, 7...）：字符位移 +1
+
+支援字符類型：
+- 大寫字母 A-Z：循環位移（Z+1=A, Y+2=A）
+- 小寫字母 a-z：循環位移（z+1=a, y+2=a）
+- 數字 0-9：循環位移（9+1=0, 8+2=0）
+- 特殊字符（-_等）：保持不變
+
+範例：
+位置:  0  1  2  3  4  5  6  7
+原文:  s  k  -  p  r  o  j  -
+位移: +2 +1 不變 +1 +2 +1 +2 不變
+加密:  u  l  -  q  t  p  l  -
+```
+
+**為什麼選擇這個算法？**
+- ✅ 比簡單 +1 位移更複雜（兩種位移模式）
+- ✅ 可以安全提交到 git（沒有明文）
+- ✅ 實作簡單，不需要外部加密庫
+- ⚠️ 仍然可以被分析破解（不適合高度敏感資料）
+
+---
+
+### 使用方法
+
+#### 1. 加密新的 API Key
+
+```bash
+# 使用加密工具腳本
+cd /path/to/project
+node scripts/encrypt-config.js "your-api-key-here"
+
+# 範例輸出：
+# 🔐 Encryption Results:
+# ────────────────────────────────────────────────────────────
+# Original API Key: sk-proj-abc123xyz...
+# Encrypted: ul-qtpl-cde345bac...
+# Decrypted (verification): sk-proj-abc123xyz...
+# ────────────────────────────────────────────────────────────
+# ✅ Encryption/Decryption successful!
+#
+# 📋 Copy this encrypted key to src/lib/config.ts:
+# encryptedOpenAIKey: 'ul-qtpl-cde345bac...',
+```
+
+#### 2. 更新 config.ts
+
+複製加密後的 Key 到 `src/lib/config.ts`：
+
+```typescript
+// src/lib/config.ts
+const DEFAULT_CONFIG = {
+  firebase: { /* Firebase 配置 */ },
+  // Encrypted OpenAI API Key (position-based shift: odd +1, even +2)
+  // This is safe to commit to git as it's encrypted
+  encryptedOpenAIKey: 'ul-qtpl-f3TDObl8LCo_FWCe3wnPwvlRpE5hFd-Q8Xjx0PDDG5aRTDaOJOeo10o2zDgDCYgFIw_ukS40cOV4DmdlHKciSxujzFeBdcwJ8w4kltQEwMzvrn5IMx7GIFA1BRLeX9v1MqSxdyUBTzdlUq7muPKvOAcaGteB',
+};
+```
+
+#### 3. 提交到 Git
+
+```bash
+git add src/lib/config.ts
+git commit -m "chore: update encrypted API key"
+git push origin main
+```
+
+---
+
+### 檔案結構
+
+```
+project/
+├── src/
+│   └── lib/
+│       ├── config.ts        # 包含加密的 API Key
+│       └── encryption.ts    # 加密/解密模組
+└── scripts/
+    └── encrypt-config.js    # 加密工具腳本
+```
+
+**核心檔案說明：**
+
+**`src/lib/encryption.ts`** - 加密/解密模組
+```typescript
+/**
+ * 加密 API Key
+ * @param text - 原始 API Key
+ * @returns 加密後的字符串
+ */
+export function encryptKey(text: string): string {
+  return text.split('').map((char, index) => {
+    const code = char.charCodeAt(0);
+    const shift = index % 2 === 0 ? 2 : 1;
+    // ... 加密邏輯
+  }).join('');
+}
+
+/**
+ * 解密 API Key
+ * @param text - 加密的 API Key
+ * @returns 原始字符串
+ */
+export function decryptKey(text: string): string {
+  return text.split('').map((char, index) => {
+    const code = char.charCodeAt(0);
+    const shift = index % 2 === 0 ? 2 : 1;
+    // ... 解密邏輯
+  }).join('');
+}
+```
+
+**`scripts/encrypt-config.js`** - CLI 加密工具
+```javascript
+// 獨立的 Node.js 腳本，可以在命令行直接執行
+// 用法：node scripts/encrypt-config.js "your-api-key"
+```
+
+**`src/lib/config.ts`** - 配置管理
+```typescript
+import { decryptKey } from './encryption';
+
+const DEFAULT_CONFIG = {
+  firebase: { /* ... */ },
+  encryptedOpenAIKey: '加密後的 Key',
+};
+
+export function getConfig(): AppConfig | null {
+  // 1. 優先使用 localStorage（如果用戶手動配置）
+  // 2. 其次使用環境變數（.env 檔案）
+  // 3. 最後使用默認加密配置（自動解密）
+  if (DEFAULT_CONFIG.encryptedOpenAIKey) {
+    return {
+      firebase: DEFAULT_CONFIG.firebase,
+      openaiApiKey: decryptKey(DEFAULT_CONFIG.encryptedOpenAIKey),
+    };
+  }
+}
+```
+
+---
+
+### 安全性注意事項
+
+#### ⚠️ 重要提醒
+
+1. **這不是軍事級加密**
+   - 位置基礎位移只是簡單的混淆
+   - 任何看到代碼的人都能分析出加密邏輯
+   - 適合個人專案，不適合商業或敏感用途
+
+2. **定期更換 API Key**
+   - 建議每 3-6 個月更換一次
+   - 如果專案變成公開或商業用途，立即更換
+   - 如果懷疑洩漏，立即撤銷並重新生成
+
+3. **不要在 README 中暴露加密細節**
+   - 避免在公開文件中詳細說明加密算法
+   - 不要給出具體的位移規則
+   - 這份 CLAUDE.md 是專案內部文件，不應公開
+
+4. **Git 歷史清理**
+   - 如果曾經提交明文 API Key，必須清除 git 歷史
+   - 使用 `git filter-branch` 或重新建立倉庫
+   - 清除後強制推送：`git push -f origin main`
+
+---
+
+### 最佳實踐
+
+#### ✅ 推薦做法
+
+1. **開發環境**：使用 `.env` 檔案（不提交到 git）
+   ```env
+   VITE_OPENAI_API_KEY=sk-proj-your-real-key
+   ```
+
+2. **生產環境**：使用加密的 Key（可以提交到 git）
+   ```typescript
+   encryptedOpenAIKey: 'ul-qtpl-...'
+   ```
+
+3. **定期更換**：每 3-6 個月更換一次 API Key
+
+4. **監控使用量**：定期檢查 OpenAI 使用量，發現異常立即處理
+
+#### ❌ 避免做法
+
+1. ❌ 不要在公開的 README 中說明加密方法
+2. ❌ 不要使用相同的 Key 在多個專案
+3. ❌ 不要把解密後的 Key 記錄在 Console（生產環境）
+4. ❌ 不要假設這個加密是「安全的」，它只是「隱藏的」
+
+---
+
+### 常見問題 FAQ
+
+**Q: 為什麼不使用 AES-256 等強加密？**
+A: 因為前端加密需要把解密密鑰也存在代碼中，這樣仍然不安全。真正的安全做法是使用後端 API 代理，不在前端暴露 API Key。
+
+**Q: 這個加密能防止別人盜用我的 API Key 嗎？**
+A: 不能完全防止。這只是「隱藏」而非「保護」。任何有權限看代碼的人都能解密。適合個人專案或內部工具。
+
+**Q: 如果我的 Key 洩漏了怎麼辦？**
+A:
+1. 立即前往 OpenAI 平台撤銷該 Key
+2. 生成新的 API Key
+3. 使用 `node scripts/encrypt-config.js "新 Key"` 重新加密
+4. 更新 `src/lib/config.ts`
+5. 提交並部署
+
+**Q: 可以用這個方法加密其他 API Key 嗎？**
+A: 可以！同樣的方法可以用於任何需要「隱藏但非絕對保護」的 API Key。
+
+**Q: 部署到 GitHub Pages 安全嗎？**
+A: GitHub Pages 是靜態網站，代碼會被編譯和壓縮，但仍然可以被分析。這個加密方法可以增加一層保護，但不是絕對安全。
+
+---
+
+### 更新加密 Key 的完整流程
+
+```bash
+# 1. 加密新的 API Key
+node scripts/encrypt-config.js "sk-proj-your-new-api-key"
+
+# 2. 複製輸出的加密 Key
+
+# 3. 更新 src/lib/config.ts
+# 找到 encryptedOpenAIKey，替換為新的加密 Key
+
+# 4. 測試本地運行
+npm run dev
+# 檢查 Console 是否顯示 "🔓 Using default encrypted configuration"
+
+# 5. 提交並推送
+git add src/lib/config.ts
+git commit -m "chore: update encrypted API key"
+git push origin main
+
+# 6. 等待 GitHub Actions 部署完成
+# 查看 Actions: https://github.com/username/repo/actions
+
+# 7. 驗證線上版本是否正常
+# 訪問 GitHub Pages 網站，檢查功能是否正常
+```
+
+---
+
+### 總結
+
+**這個加密系統適合：**
+- ✅ 個人專案或作品集展示
+- ✅ 內部工具或原型開發
+- ✅ 學習和教學用途
+- ✅ 需要「開箱即用」的用戶體驗
+
+**這個加密系統不適合：**
+- ❌ 商業產品
+- ❌ 處理敏感資料的應用
+- ❌ 需要符合安全合規要求的專案
+- ❌ 高流量或高價值的 API 使用
+
+**記住：安全是一個光譜，選擇適合你專案需求的解決方案！** 🔐
+
+---
+---
+
 ## 🎨 UI/UX 設計規範
 
 ### 沙丘主題配色（必須遵守）
