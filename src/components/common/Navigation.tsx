@@ -8,7 +8,6 @@ export default function Navigation() {
     { to: '/manual', label: '手動輸入' },
     { to: '/history', label: '歷史' },
     { to: '/stats', label: '統計' },
-    { to: '/settings', label: '⚙️ 設定' },
   ];
 
   return (

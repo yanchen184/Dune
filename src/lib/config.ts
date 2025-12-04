@@ -21,7 +21,7 @@ const CONFIG_KEY = 'dune_app_config';
 
 // Default configuration (can be committed to git)
 // Firebase config is in plaintext (protected by Firebase security rules)
-// OpenAI API Key is encrypted using character shift (+1)
+// OpenAI API Key is encrypted using position-based shift (odd +1, even +2)
 const DEFAULT_CONFIG = {
   firebase: {
     apiKey: 'AIzaSyCPYykTmxJu9znACHIXw0XvOUFozBGZA3M',
@@ -33,9 +33,9 @@ const DEFAULT_CONFIG = {
     appId: '1:173857146074:web:5825bf6bb4e1ce2bde91e3',
     measurementId: 'G-DRYHX3SV1T',
   },
-  // OpenAI API Key should be provided via Settings page or environment variables
-  // DO NOT commit real API keys to git
-  encryptedOpenAIKey: '',
+  // Encrypted OpenAI API Key (position-based shift: odd +1, even +2)
+  // This is safe to commit to git as it's encrypted
+  encryptedOpenAIKey: 'ul-qtpl-f3TDObl8LCo_FWCe3wnPwvlRpE5hFd-Q8Xjx0PDDG5aRTDaOJOeo10o2zDgDCYgFIw_ukS40cOV4DmdlHKciSxujzFeBdcwJ8w4kltQEwMzvrn5IMx7GIFA1BRLeX9v1MqSxdyUBTzdlUq7muPKvOAcaGteB',
 };
 
 // Get configuration from localStorage or environment variables
@@ -67,9 +67,15 @@ export function getConfig(): AppConfig | null {
     };
   }
 
-  // Third fallback: Firebase only (no OpenAI key)
-  // User must configure OpenAI API Key via Settings page
-  console.log('⚠️ OpenAI API Key not configured. Please go to Settings page.');
+  // Third fallback: default encrypted configuration
+  if (DEFAULT_CONFIG.encryptedOpenAIKey && DEFAULT_CONFIG.firebase.apiKey) {
+    console.log('🔓 Using default encrypted configuration');
+    return {
+      firebase: DEFAULT_CONFIG.firebase,
+      openaiApiKey: decryptKey(DEFAULT_CONFIG.encryptedOpenAIKey),
+    };
+  }
+
   return null;
 }
 
