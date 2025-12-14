@@ -22,15 +22,15 @@ export default function EditGameModal({ game, isOpen, onClose, onSave }: EditGam
 
   if (!game) return null;
 
-  const handlePlayerChange = (index: number, field: 'name' | 'faction' | 'score', value: string | number) => {
+  const handlePlayerChange = (index: number, field: 'name' | 'faction' | 'score' | 'spice' | 'coins', value: string | number) => {
     const newPlayers = [...players];
     const currentPlayer = newPlayers[index];
     if (!currentPlayer) return;
 
-    if (field === 'score') {
+    if (field === 'score' || field === 'spice' || field === 'coins') {
       newPlayers[index] = {
         ...currentPlayer,
-        score: Number(value)
+        [field]: Number(value) || 0
       };
     } else if (field === 'name') {
       newPlayers[index] = {
@@ -46,12 +46,43 @@ export default function EditGameModal({ game, isOpen, onClose, onSave }: EditGam
     setPlayers(newPlayers);
   };
 
+  /**
+   * 判定勝利者邏輯：分數 → 香料 → 錢幣
+   * Reason: 使用和 ManualInputPage 相同的判定邏輯
+   */
+  const determineWinners = (playerData: typeof players) => {
+    // 1. 找出最高分
+    const maxScore = Math.max(...playerData.map(p => p.score));
+    let candidates = playerData.filter(p => p.score === maxScore);
+
+    // 如果只有一位最高分，直接返回
+    if (candidates.length === 1) {
+      return candidates.map(p => p.name);
+    }
+
+    // 2. 比較香料
+    const maxSpice = Math.max(...candidates.map(p => p.spice ?? 0));
+    candidates = candidates.filter(p => (p.spice ?? 0) === maxSpice);
+
+    // 如果香料比較後只有一位，返回
+    if (candidates.length === 1) {
+      return candidates.map(p => p.name);
+    }
+
+    // 3. 比較錢幣
+    const maxCoins = Math.max(...candidates.map(p => p.coins ?? 0));
+    candidates = candidates.filter(p => (p.coins ?? 0) === maxCoins);
+
+    // 返回所有仍然並列的玩家名稱
+    return candidates.map(p => p.name);
+  };
+
   const handleSave = () => {
-    // 重新計算勝利者
-    const maxScore = Math.max(...players.map(p => p.score));
+    // 使用新的判定邏輯計算勝利者
+    const winnerNames = determineWinners(players);
     const updatedPlayers = players.map(p => ({
       ...p,
-      isWinner: p.score === maxScore,
+      isWinner: winnerNames.includes(p.name),
     }));
 
     onSave({
@@ -92,7 +123,8 @@ export default function EditGameModal({ game, isOpen, onClose, onSave }: EditGam
                       玩家 {index + 1}
                     </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* 第一行：名稱和角色 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* 玩家名稱 */}
                       <div>
                         <label className="block text-dune-sand font-rajdhani mb-2">
@@ -116,16 +148,50 @@ export default function EditGameModal({ game, isOpen, onClose, onSave }: EditGam
                           onChange={value => handlePlayerChange(index, 'faction', value)}
                         />
                       </div>
+                    </div>
 
+                    {/* 第二行：分數、香料、錢幣 */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                       {/* 分數 */}
                       <div>
                         <label className="block text-dune-sand font-rajdhani mb-2">
-                          最終得分
+                          最終得分 <span className="text-dune-spice">*</span>
                         </label>
                         <input
                           type="number"
                           value={player.score}
                           onChange={e => handlePlayerChange(index, 'score', e.target.value)}
+                          min="0"
+                          className="w-full bg-dune-sky text-dune-sand px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-dune-spice"
+                        />
+                      </div>
+
+                      {/* 香料 */}
+                      <div>
+                        <label className="block text-dune-sand font-rajdhani mb-2">
+                          香料數量
+                        </label>
+                        <input
+                          type="number"
+                          value={player.spice ?? 0}
+                          onChange={e => handlePlayerChange(index, 'spice', e.target.value)}
+                          min="0"
+                          placeholder="0"
+                          className="w-full bg-dune-sky text-dune-sand px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-dune-spice"
+                        />
+                      </div>
+
+                      {/* 錢幣 */}
+                      <div>
+                        <label className="block text-dune-sand font-rajdhani mb-2">
+                          錢幣數量
+                        </label>
+                        <input
+                          type="number"
+                          value={player.coins ?? 0}
+                          onChange={e => handlePlayerChange(index, 'coins', e.target.value)}
+                          min="0"
+                          placeholder="0"
                           className="w-full bg-dune-sky text-dune-sand px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-dune-spice"
                         />
                       </div>
