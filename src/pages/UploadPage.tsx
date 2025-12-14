@@ -113,6 +113,8 @@ export default function UploadPage() {
           name: p.name,
           faction: p.faction as DuneFaction,
           score: p.score,
+          spice: p.spice ?? 0,       // Default to 0 if not provided
+          coins: p.coins ?? 0,       // Default to 0 if not provided
           isWinner: p.isWinner,
         })) as PlayerRecord[],
         createdAt: Timestamp.now(),

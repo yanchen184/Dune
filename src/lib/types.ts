@@ -31,6 +31,8 @@ export interface PlayerRecord {
   name: string;                    // Player name
   faction: DuneFaction;            // Faction played
   score: number;                   // Final score
+  spice?: number;                  // Spice count (optional, for tiebreaker)
+  coins?: number;                  // Coin count (optional, for tiebreaker)
   isWinner: boolean;               // Winner flag
 }
 
@@ -56,6 +58,8 @@ export interface VisionRecognitionResult {
     name: string;
     faction: string;
     score: number;
+    spice?: number;      // Optional spice count
+    coins?: number;      // Optional coin count
     isWinner: boolean;
   }[];
   confidence: number;  // 0-1 confidence score

@@ -21,7 +21,11 @@ export default function PlayerNameCombobox({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // 過濾玩家列表（去重並排序）
-  const uniqueSuggestions = Array.from(new Set(suggestions)).sort();
+  // Reason: 過濾掉 null/undefined 值，避免 toLowerCase() 錯誤
+  const uniqueSuggestions = Array.from(new Set(suggestions))
+    .filter((name): name is string => name != null && name !== '') // 移除空值
+    .sort();
+
   const filteredPlayers = uniqueSuggestions.filter(name =>
     name.toLowerCase().includes(searchTerm.toLowerCase())
   );
