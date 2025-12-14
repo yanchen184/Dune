@@ -17,6 +17,8 @@ interface PlayerInput {
   name: string;
   faction: string;
   score: string;
+  spice: string;
+  coins: string;
 }
 
 export default function ManualInputPage() {
@@ -29,9 +31,9 @@ export default function ManualInputPage() {
   const [pendingGameData, setPendingGameData] = useState<any>(null);
 
   const [players, setPlayers] = useState<PlayerInput[]>([
-    { id: '1', name: '', faction: '', score: '' },
-    { id: '2', name: '', faction: '', score: '' },
-    { id: '3', name: '', faction: '', score: '' },
+    { id: '1', name: '', faction: '', score: '', spice: '', coins: '' },
+    { id: '2', name: '', faction: '', score: '', spice: '', coins: '' },
+    { id: '3', name: '', faction: '', score: '', spice: '', coins: '' },
   ]);
 
   // 從歷史記錄中提取所有玩家名稱
@@ -47,7 +49,7 @@ export default function ManualInputPage() {
     }
     setPlayers([
       ...players,
-      { id: Date.now().toString(), name: '', faction: '', score: '' },
+      { id: Date.now().toString(), name: '', faction: '', score: '', spice: '', coins: '' },
     ]);
   };
 
@@ -80,6 +82,15 @@ export default function ManualInputPage() {
         showToast('請填寫有效的分數', 'error');
         return false;
       }
+      // Spice and coins are optional, but must be valid numbers if filled
+      if (player.spice && isNaN(Number(player.spice))) {
+        showToast('香料必須是有效數字', 'error');
+        return false;
+      }
+      if (player.coins && isNaN(Number(player.coins))) {
+        showToast('錢幣必須是有效數字', 'error');
+        return false;
+      }
     }
 
     // 檢查是否有重複的玩家名稱
@@ -93,6 +104,43 @@ export default function ManualInputPage() {
     return true;
   };
 
+  /**
+   * 判定勝利者邏輯：分數 → 香料 → 錢幣
+   * Reason: 根據規則，先比分數，同分比香料，香料相同比錢幣
+   */
+  const determineWinners = (playerData: Array<{
+    name: string;
+    faction: string;
+    score: number;
+    spice: number;
+    coins: number;
+  }>) => {
+    // 1. 找出最高分
+    const maxScore = Math.max(...playerData.map(p => p.score));
+    let candidates = playerData.filter(p => p.score === maxScore);
+
+    // 如果只有一位最高分，直接返回
+    if (candidates.length === 1) {
+      return candidates.map(p => p.name);
+    }
+
+    // 2. 比較香料
+    const maxSpice = Math.max(...candidates.map(p => p.spice));
+    candidates = candidates.filter(p => p.spice === maxSpice);
+
+    // 如果香料比較後只有一位，返回
+    if (candidates.length === 1) {
+      return candidates.map(p => p.name);
+    }
+
+    // 3. 比較錢幣
+    const maxCoins = Math.max(...candidates.map(p => p.coins));
+    candidates = candidates.filter(p => p.coins === maxCoins);
+
+    // 返回所有仍然並列的玩家名稱
+    return candidates.map(p => p.name);
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
@@ -100,21 +148,20 @@ export default function ManualInputPage() {
     try {
       const gameNumber = await getNextGameNumber();
 
-      // 將分數轉換為數字
+      // 將資料轉換為數字
       const playerScores = players.map(p => ({
         name: p.name.trim(),
         faction: p.faction,
         score: Number(p.score),
+        spice: p.spice ? Number(p.spice) : 0,
+        coins: p.coins ? Number(p.coins) : 0,
       }));
 
-      // 找出最高分
-      const maxScore = Math.max(...playerScores.map(p => p.score));
+      // 使用新的判定邏輯找出勝利者
+      const winnerNames = determineWinners(playerScores);
 
-      // 檢查是否有多位同分最高分玩家
-      const topScorePlayers = playerScores.filter(p => p.score === maxScore);
-
-      if (topScorePlayers.length > 1) {
-        // 有同分情況，顯示選擇器
+      if (winnerNames.length > 1) {
+        // 有多位並列勝利者，顯示選擇器
         setPendingGameData({
           gameNumber,
           playerScores,
@@ -124,12 +171,14 @@ export default function ManualInputPage() {
         return;
       }
 
-      // 沒有同分，直接標記最高分為贏家
+      // 有明確的勝利者，直接標記
       const playersWithWinner: PlayerRecord[] = playerScores.map(p => ({
         name: p.name,
         faction: p.faction as DuneFaction,
         score: p.score,
-        isWinner: p.score === maxScore,
+        spice: p.spice,
+        coins: p.coins,
+        isWinner: winnerNames.includes(p.name),
       }));
 
       await addGame({
@@ -164,6 +213,8 @@ export default function ManualInputPage() {
         name: p.name,
         faction: p.faction as DuneFaction,
         score: p.score,
+        spice: p.spice,
+        coins: p.coins,
         isWinner: winnerIndexes.includes(index),
       }));
 
@@ -212,7 +263,7 @@ export default function ManualInputPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* 玩家名稱 */}
                 <div>
                   <label className="block text-dune-sand font-rajdhani mb-2">
@@ -237,17 +288,50 @@ export default function ManualInputPage() {
                     placeholder="輸入角色名稱搜尋..."
                   />
                 </div>
+              </div>
 
+              {/* 分數、香料、錢幣（第二行）*/}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 {/* 分數 */}
                 <div>
                   <label className="block text-dune-sand font-rajdhani mb-2">
-                    最終得分
+                    最終得分 <span className="text-dune-spice">*</span>
                   </label>
                   <input
                     type="number"
                     value={player.score}
                     onChange={e => handlePlayerChange(player.id, 'score', e.target.value)}
                     placeholder="輸入分數"
+                    min="0"
+                    className="w-full bg-dune-sky text-dune-sand px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-dune-spice"
+                  />
+                </div>
+
+                {/* 香料 */}
+                <div>
+                  <label className="block text-dune-sand font-rajdhani mb-2">
+                    香料數量（可選）
+                  </label>
+                  <input
+                    type="number"
+                    value={player.spice}
+                    onChange={e => handlePlayerChange(player.id, 'spice', e.target.value)}
+                    placeholder="香料數"
+                    min="0"
+                    className="w-full bg-dune-sky text-dune-sand px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-dune-spice"
+                  />
+                </div>
+
+                {/* 錢幣 */}
+                <div>
+                  <label className="block text-dune-sand font-rajdhani mb-2">
+                    錢幣數量（可選）
+                  </label>
+                  <input
+                    type="number"
+                    value={player.coins}
+                    onChange={e => handlePlayerChange(player.id, 'coins', e.target.value)}
+                    placeholder="錢幣數"
                     min="0"
                     className="w-full bg-dune-sky text-dune-sand px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-dune-spice"
                   />
@@ -283,7 +367,9 @@ export default function ManualInputPage() {
               <li>預設 3 位玩家，可新增到最多 6 位</li>
               <li>玩家名稱支援搜尋，選擇現有玩家或輸入新名稱</li>
               <li>角色欄位支援搜尋，輸入名稱快速篩選</li>
-              <li>如果有多位玩家同分，會彈出選擇勝利者的視窗</li>
+              <li>香料和錢幣為可選欄位，用於同分時的勝負判定</li>
+              <li>勝負判定順序：分數 → 香料 → 錢幣</li>
+              <li>如果經過所有比較仍並列，會彈出選擇勝利者的視窗</li>
             </ul>
           </div>
         </div>

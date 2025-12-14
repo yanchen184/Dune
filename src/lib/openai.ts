@@ -32,6 +32,8 @@ export async function analyzeGameImage(
       "name": "玩家名稱",
       "faction": "角色中文名稱",
       "score": 分數(數字),
+      "spice": 香料數量(數字，可選),
+      "coins": 錢幣數量(數字，可選),
       "isWinner": 是否勝利(布林值)
     }
   ],
@@ -49,7 +51,14 @@ export async function analyzeGameImage(
 - 海倫娜·里奇斯（Helena Richese）
 - 格羅蘇·拉班（Glossu Rabban）
 
-最高分者為勝利者。無法識別的欄位用null。
+勝利者判定規則（依序比較）：
+1. 最高分數者為勝利者
+2. 如果分數相同，比較香料數量，最多者勝
+3. 如果香料也相同，比較錢幣數量，最多者勝
+4. 如果都相同，則為並列勝利
+
+請嘗試識別圖片中的香料(spice)和錢幣(coins)數量。
+無法識別的欄位請用 0 代替（spice 和 coins）或 null（name, faction）。
 請只返回 JSON，不要包含其他文字說明。
 `;
 
