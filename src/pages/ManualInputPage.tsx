@@ -6,6 +6,7 @@ import { useGames } from '@/hooks/useGames';
 import { useToast } from '@/hooks/useToast';
 import { Timestamp } from 'firebase/firestore';
 import { PlayerRecord, DuneFaction } from '@/lib/types';
+import { isAIPlayer } from '@/lib/aiPlayers';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 import FactionCombobox from '@/components/common/FactionCombobox';
@@ -172,7 +173,7 @@ export default function ManualInputPage() {
       }
 
       // 有明確的勝利者，直接標記
-      const playersWithWinner: PlayerRecord[] = playerScores.map(p => ({
+      const allPlayers: PlayerRecord[] = playerScores.map(p => ({
         name: p.name,
         faction: p.faction as DuneFaction,
         score: p.score,
@@ -181,10 +182,27 @@ export default function ManualInputPage() {
         isWinner: winnerNames.includes(p.name),
       }));
 
+      // 過濾掉 AI 玩家
+      // Reason: AI 玩家不應該計入統計數據
+      const realPlayers = allPlayers.filter(p => !isAIPlayer(p.name));
+
+      // 如果過濾後沒有真實玩家，顯示錯誤
+      if (realPlayers.length === 0) {
+        showToast('❌ 必須至少有一位真實玩家', 'error');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 如果過濾掉了一些 AI 玩家，顯示提示
+      if (realPlayers.length < allPlayers.length) {
+        const filteredCount = allPlayers.length - realPlayers.length;
+        showToast(`✅ 已過濾 ${filteredCount} 位 AI 玩家`, 'info');
+      }
+
       await addGame({
         gameNumber,
         timestamp: Timestamp.now(),
-        players: playersWithWinner,
+        players: realPlayers,
         createdAt: Timestamp.now(),
         recognitionConfidence: 1.0,
       });
@@ -209,7 +227,7 @@ export default function ManualInputPage() {
       const { gameNumber, playerScores } = pendingGameData;
 
       // 根據選擇的索引標記勝利者
-      const playersWithWinner: PlayerRecord[] = playerScores.map((p: any, index: number) => ({
+      const allPlayers: PlayerRecord[] = playerScores.map((p: any, index: number) => ({
         name: p.name,
         faction: p.faction as DuneFaction,
         score: p.score,
@@ -218,10 +236,27 @@ export default function ManualInputPage() {
         isWinner: winnerIndexes.includes(index),
       }));
 
+      // 過濾掉 AI 玩家
+      const realPlayers = allPlayers.filter(p => !isAIPlayer(p.name));
+
+      // 如果過濾後沒有真實玩家，顯示錯誤
+      if (realPlayers.length === 0) {
+        showToast('❌ 必須至少有一位真實玩家', 'error');
+        setIsSubmitting(false);
+        setPendingGameData(null);
+        return;
+      }
+
+      // 如果過濾掉了一些 AI 玩家，顯示提示
+      if (realPlayers.length < allPlayers.length) {
+        const filteredCount = allPlayers.length - realPlayers.length;
+        showToast(`✅ 已過濾 ${filteredCount} 位 AI 玩家`, 'info');
+      }
+
       await addGame({
         gameNumber,
         timestamp: Timestamp.now(),
-        players: playersWithWinner,
+        players: realPlayers,
         createdAt: Timestamp.now(),
         recognitionConfidence: 1.0,
       });

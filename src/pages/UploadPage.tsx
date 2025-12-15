@@ -9,6 +9,7 @@ import { Timestamp } from 'firebase/firestore';
 import { PlayerRecord, DuneFaction } from '@/lib/types';
 import { validateImageFile } from '@/lib/utils';
 import { MAX_FILE_SIZE } from '@/lib/constants';
+import { filterRealPlayers } from '@/lib/aiPlayers';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 import Loading from '@/components/common/Loading';
@@ -105,18 +106,39 @@ export default function UploadPage() {
         // Continue without image - it's optional
       }
 
+      // 過濾掉 AI 玩家和空名稱玩家
+      // Reason: AI 玩家不應該計入統計數據
+      const allPlayers = result.players.map(p => ({
+        name: p.name,
+        faction: p.faction as DuneFaction,
+        score: p.score,
+        spice: p.spice ?? 0,
+        coins: p.coins ?? 0,
+        isWinner: p.isWinner,
+      })) as PlayerRecord[];
+
+      const realPlayers = filterRealPlayers(allPlayers);
+
+      // 如果過濾後沒有真實玩家，顯示警告
+      if (realPlayers.length === 0) {
+        showToast('❌ 未識別到真實玩家，請使用手動輸入', 'error');
+        setTimeout(() => {
+          navigate('/manual');
+        }, 2000);
+        return;
+      }
+
+      // 如果過濾掉了一些 AI 玩家，顯示提示
+      if (realPlayers.length < allPlayers.length) {
+        const filteredCount = allPlayers.length - realPlayers.length;
+        showToast(`✅ 已過濾 ${filteredCount} 位 AI 玩家`, 'info');
+      }
+
       const gameData = {
         gameNumber,
         timestamp: Timestamp.now(),
         ...(imageUrl && { imageUrl }), // Only include if defined
-        players: result.players.map(p => ({
-          name: p.name,
-          faction: p.faction as DuneFaction,
-          score: p.score,
-          spice: p.spice ?? 0,       // Default to 0 if not provided
-          coins: p.coins ?? 0,       // Default to 0 if not provided
-          isWinner: p.isWinner,
-        })) as PlayerRecord[],
+        players: realPlayers,
         createdAt: Timestamp.now(),
         recognitionConfidence: result.confidence,
       };

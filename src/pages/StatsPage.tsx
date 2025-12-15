@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Timestamp } from 'firebase/firestore';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useGames } from '@/hooks/useGames';
+import { isAIPlayer } from '@/lib/aiPlayers';
 import Card from '@/components/common/Card';
 import Loading from '@/components/common/Loading';
 import { DUNE_COLORS } from '@/lib/constants';
@@ -28,6 +29,12 @@ export default function StatsPage() {
 
     sortedGames.forEach(game => {
       game.players.forEach(player => {
+        // 過濾掉 AI 玩家
+        // Reason: AI 玩家不應該計入統計數據
+        if (isAIPlayer(player.name)) {
+          return; // 跳過這個玩家
+        }
+
         // Player stats
         if (!pStats[player.name]) {
           pStats[player.name] = {
