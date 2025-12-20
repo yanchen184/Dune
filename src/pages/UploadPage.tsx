@@ -2,7 +2,6 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useVision } from '@/hooks/useVision';
-import { useStorage } from '@/hooks/useStorage';
 import { useFirebase } from '@/hooks/useFirebase';
 import { useToast } from '@/hooks/useToast';
 import { Timestamp } from 'firebase/firestore';
@@ -10,6 +9,7 @@ import { PlayerRecord, DuneFaction } from '@/lib/types';
 import { validateImageFile } from '@/lib/utils';
 import { MAX_FILE_SIZE } from '@/lib/constants';
 import { filterRealPlayers } from '@/lib/aiPlayers';
+import { compressImageToBase64, getBase64Size } from '@/lib/imageUtils';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 import Loading from '@/components/common/Loading';
@@ -19,10 +19,10 @@ export default function UploadPage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [processingStage, setProcessingStage] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { analyzeImage, loading: visionLoading } = useVision();
-  const { uploadImage } = useStorage();
   const { addGame, getNextGameNumber } = useFirebase();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -84,6 +84,8 @@ export default function UploadPage() {
 
     setIsProcessing(true);
     try {
+      // 階段 1: AI 分析圖片
+      setProcessingStage('AI 正在分析圖片...');
       const result = await analyzeImage(file);
 
       if (!result) {
@@ -96,16 +98,26 @@ export default function UploadPage() {
 
       const gameNumber = await getNextGameNumber();
 
-      // Try to upload image, but don't fail if it doesn't work
-      let imageUrl: string | undefined;
+      // 階段 2: 壓縮圖片
+      setProcessingStage('壓縮圖片中...');
+      let imageData: string | undefined;
       try {
-        imageUrl = await uploadImage(file, gameNumber);
-        console.log('✅ Image uploaded successfully:', imageUrl);
-      } catch (uploadError) {
-        console.warn('⚠️ Image upload failed, continuing without image:', uploadError);
+        console.log('🖼️ Compressing image to Base64...');
+        imageData = await compressImageToBase64(file, 400, 0.8);
+        const sizeKB = getBase64Size(imageData);
+        console.log(`✅ Image compressed successfully: ${sizeKB.toFixed(2)} KB`);
+
+        if (sizeKB > 500) {
+          console.warn('⚠️ Image size is large, may affect loading speed');
+        }
+      } catch (compressError) {
+        console.error('❌ Image compression failed:', compressError);
+        showToast('⚠️ 圖片壓縮失敗，遊戲記錄將不含圖片', 'error');
         // Continue without image - it's optional
       }
 
+      // 階段 3: 處理玩家資料
+      setProcessingStage('處理玩家資料...');
       // 過濾掉 AI 玩家和空名稱玩家
       // Reason: AI 玩家不應該計入統計數據
       const allPlayers = result.players.map(p => ({
@@ -134,25 +146,34 @@ export default function UploadPage() {
         showToast(`✅ 已過濾 ${filteredCount} 位 AI 玩家`, 'info');
       }
 
+      // 階段 4: 保存遊戲記錄
+      setProcessingStage('保存遊戲記錄...');
       const gameData = {
         gameNumber,
         timestamp: Timestamp.now(),
-        ...(imageUrl && { imageUrl }), // Only include if defined
+        ...(imageData && { imageData }), // Include Base64 image if compressed successfully
         players: realPlayers,
         createdAt: Timestamp.now(),
         recognitionConfidence: result.confidence,
       };
 
-      console.log('💾 Attempting to save game:', gameData);
+      console.log('💾 Attempting to save game with Base64 image');
       await addGame(gameData);
 
-      showToast('遊戲記錄已新增！', 'success');
-      navigate('/history');
+      // 階段 5: 完成，準備跳轉
+      setProcessingStage('完成！正在跳轉...');
+      showToast('✅ 遊戲記錄已新增（含圖片）！', 'success');
+
+      // 稍微延遲跳轉，讓用戶看到完成訊息
+      setTimeout(() => {
+        navigate('/history');
+      }, 500);
     } catch (error) {
       console.error('❌ Failed to save game:', error);
       showToast('上傳失敗', 'error');
     } finally {
       setIsProcessing(false);
+      setProcessingStage('');
     }
   };
 
@@ -289,7 +310,7 @@ export default function UploadPage() {
             )}
           </AnimatePresence>
 
-          {visionLoading && <Loading message="AI 正在分析圖片..." />}
+          {isProcessing && <Loading message={processingStage || 'AI 正在分析圖片...'} />}
 
           {/* 操作按鈕 */}
           <div className="flex flex-wrap gap-4">

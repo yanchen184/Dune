@@ -9,6 +9,7 @@ export const AI_PLAYER_NAMES = [
   '雷托',
   '保羅',
   '阿麗亞',
+  '阿麗亞娜',  // 常見誤寫或變體
   '潔西卡',
   '查尼',
   '斯第爾格',
@@ -19,11 +20,15 @@ export const AI_PLAYER_NAMES = [
   '拉班',
   '皇帝',
   '伊魯朗公主',
+  '梅農',  // 梅農·索瓦爾德伯爵的簡稱
+  '海倫娜',  // 海倫娜·里奇斯的簡稱
+  '格羅蘇',  // 格羅蘇·拉班的簡稱
 
   // 英文角色名
   'Leto',
   'Paul',
   'Alia',
+  'Ariana',  // 常見誤寫或變體
   'Jessica',
   'Chani',
   'Stilgar',
@@ -34,6 +39,9 @@ export const AI_PLAYER_NAMES = [
   'Rabban',
   'Emperor',
   'Irulan',
+  'Memnon',  // Count Memnon Thorvald 的簡稱
+  'Helena',  // Helena Richese 的簡稱
+  'Glossu',  // Glossu Rabban 的簡稱
 
   // 常見的 AI 標記
   'AI',

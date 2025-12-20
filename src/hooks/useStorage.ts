@@ -18,18 +18,21 @@ export function useStorage() {
 
       // Add timeout to prevent hanging on CORS errors
       const uploadPromise = (async () => {
+        console.log(`📤 Starting upload: ${filename} (${(file.size / 1024).toFixed(2)} KB)`);
         await uploadBytes(storageRef, file, {
           contentType: file.type,
         });
+        console.log('✅ Upload completed, getting download URL...');
         return await getDownloadURL(storageRef);
       })();
 
       const timeoutPromise = new Promise<string>((_, reject) => {
-        setTimeout(() => reject(new Error('Upload timeout after 10 seconds')), 10000);
+        setTimeout(() => reject(new Error('Upload timeout after 30 seconds')), 30000);
       });
 
       // Race between upload and timeout
       const downloadURL = await Promise.race([uploadPromise, timeoutPromise]);
+      console.log('✅ Download URL obtained:', downloadURL);
       return downloadURL;
     } catch (error) {
       console.error('Error uploading image:', error);

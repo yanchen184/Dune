@@ -1,0 +1,21 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for Dune Game Stats
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow read access to all game images
+    match /game-images/{imageId} {
+      // Anyone can read (download) images
+      allow read: if true;
+
+      // Allow write (upload/update/delete) for all users
+      // Note: In production, you would add authentication
+      allow write: if true;
+    }
+
+    // Block all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
