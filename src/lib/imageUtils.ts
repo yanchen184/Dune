@@ -99,8 +99,8 @@ export function getBase64Size(base64: string): number {
  */
 export function base64ToBlob(base64: string): Blob {
   const parts = base64.split(';base64,');
-  const contentType = parts[0].split(':')[1];
-  const raw = window.atob(parts[1]);
+  const contentType = parts[0]?.split(':')[1] || 'image/jpeg';
+  const raw = window.atob(parts[1] || '');
   const rawLength = raw.length;
   const uInt8Array = new Uint8Array(rawLength);
 
