@@ -24,9 +24,9 @@ export default function HomePage() {
         if (!playerStats[player.name]) {
           playerStats[player.name] = { wins: 0, totalGames: 0 };
         }
-        playerStats[player.name].totalGames++;
+        playerStats[player.name]!.totalGames++;
         if (player.isWinner) {
-          playerStats[player.name].wins++;
+          playerStats[player.name]!.wins++;
         }
       });
     });
