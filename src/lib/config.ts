@@ -35,7 +35,7 @@ const DEFAULT_CONFIG = {
   },
   // Encrypted OpenAI API Key (position-based shift: odd +1, even +2)
   // This is safe to commit to git as it's encrypted
-  encryptedOpenAIKey: 'ul-qtpl-f3TDObl8LCo_FWCe3wnPwvlRpE5hFd-Q8Xjx0PDDG5aRTDaOJOeo10o2zDgDCYgFIw_ukS40cOV4DmdlHKciSxujzFeBdcwJ8w4kltQEwMzvrn5IMx7GIFA1BRLeX9v1MqSxdyUBTzdlUq7muPKvOAcaGteB',
+  encryptedOpenAIKey: 'ul-qtpl-UIy98mWG_P5Svl6pgou88qXEoxe1Aa0MTzGWDxv_viA5zWIwJpxqyCCj570AXO_e64b9d_kEpoV4DmdlHKQ8dJD6IEtrSuquG7CjyufZXeorWhSI42KOnOhbPdCKYZ_WrNqRCATx2jHjmaZ41WbcrsyacliB',
 };
 
 // Get configuration from localStorage or environment variables
