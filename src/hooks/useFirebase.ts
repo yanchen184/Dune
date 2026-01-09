@@ -10,7 +10,53 @@ import {
   limit,
 } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
-import { GameRecord } from '@/lib/types';
+import { GameRecord, PlayerRecord } from '@/lib/types';
+
+/**
+ * 玩家名稱別名對照表（與 openai.ts 同步）
+ */
+const PLAYER_NAME_ALIASES: Record<string, string> = {
+  'lukesuhaoo': 'lukehsuhao',
+  'lukesuhao': 'lukehsuhao',
+  'luke_suhao': 'lukehsuhao',
+  'lukehsuhaoo': 'lukehsuhao',
+};
+
+/**
+ * AI 玩家名稱列表（需要過濾掉的非真人玩家）
+ */
+const AI_PLAYER_NAMES: string[] = [
+  '未知',
+  '伊萊莎·伊卡茲',
+  '「公主」尤娜·莫里特尼',
+  '公主尤娜·莫里特尼',
+  '尤娜·莫里特尼',
+  'unknown',
+  'ai',
+  'bot',
+  'npc',
+];
+
+/**
+ * 標準化玩家名稱
+ */
+function normalizePlayerName(name: string): string {
+  if (!name) return name;
+  const lowerName = name.toLowerCase().trim();
+  return PLAYER_NAME_ALIASES[lowerName] || name;
+}
+
+/**
+ * 檢查是否為 AI 玩家
+ */
+function isAIPlayer(name: string): boolean {
+  if (!name) return true;
+  const lowerName = name.toLowerCase().trim();
+  return AI_PLAYER_NAMES.some(aiName =>
+    lowerName === aiName.toLowerCase() ||
+    lowerName.includes(aiName.toLowerCase())
+  );
+}
 
 export function useFirebase() {
   /**
@@ -112,11 +158,82 @@ export function useFirebase() {
     }
   };
 
+  /**
+   * 修復過往數據：標準化玩家名稱 + 移除 AI 玩家
+   * @returns 修復報告
+   */
+  const fixHistoricalData = async (): Promise<{
+    totalGames: number;
+    fixedGames: number;
+    renamedPlayers: { from: string; to: string; gameId: string }[];
+    removedAIPlayers: { name: string; gameId: string }[];
+  }> => {
+    const db = getDb();
+    if (!db) throw new Error('Firebase not initialized. Please configure in Settings.');
+
+    const report = {
+      totalGames: 0,
+      fixedGames: 0,
+      renamedPlayers: [] as { from: string; to: string; gameId: string }[],
+      removedAIPlayers: [] as { name: string; gameId: string }[],
+    };
+
+    try {
+      const games = await getGames();
+      report.totalGames = games.length;
+
+      for (const game of games) {
+        let needsUpdate = false;
+        const originalPlayers = [...game.players];
+        let updatedPlayers: PlayerRecord[] = [];
+
+        for (const player of originalPlayers) {
+          // 檢查是否為 AI 玩家
+          if (isAIPlayer(player.name)) {
+            report.removedAIPlayers.push({ name: player.name, gameId: game.id });
+            needsUpdate = true;
+            continue; // 跳過 AI 玩家
+          }
+
+          // 標準化名稱
+          const normalizedName = normalizePlayerName(player.name);
+          if (normalizedName !== player.name) {
+            report.renamedPlayers.push({
+              from: player.name,
+              to: normalizedName,
+              gameId: game.id,
+            });
+            needsUpdate = true;
+          }
+
+          updatedPlayers.push({
+            ...player,
+            name: normalizedName,
+          });
+        }
+
+        // 如果有變更，更新資料庫
+        if (needsUpdate) {
+          await updateGame(game.id, { players: updatedPlayers });
+          report.fixedGames++;
+          console.log(`✅ Fixed game ${game.id} (Game #${game.gameNumber})`);
+        }
+      }
+
+      console.log('📊 Data fix report:', report);
+      return report;
+    } catch (error) {
+      console.error('Error fixing historical data:', error);
+      throw new Error('Failed to fix historical data');
+    }
+  };
+
   return {
     addGame,
     deleteGame,
     updateGame,
     getGames,
     getNextGameNumber,
+    fixHistoricalData,
   };
 }

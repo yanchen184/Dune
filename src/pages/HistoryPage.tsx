@@ -14,11 +14,12 @@ import { formatTimestamp } from '@/lib/utils';
 
 export default function HistoryPage() {
   const { games, loading, removeGame, refreshGames } = useGames();
-  const { updateGame } = useFirebase();
+  const { updateGame, fixHistoricalData } = useFirebase();
   const { deleteImage } = useStorage();
   const { showToast } = useToast();
   const [editingGame, setEditingGame] = useState<GameRecord | null>(null);
   const [viewingImage, setViewingImage] = useState<{ url: string; gameNumber: number } | null>(null);
+  const [isFixing, setIsFixing] = useState(false);
 
   const handleDelete = async (id: string, imageUrl?: string) => {
     if (!confirm('確定要刪除這筆記錄嗎？')) return;
@@ -49,11 +50,57 @@ export default function HistoryPage() {
     }
   };
 
+  /**
+   * 修復過往數據：統一玩家名稱 + 移除 AI 玩家
+   */
+  const handleFixData = async () => {
+    if (!confirm('確定要修復過往數據嗎？\n\n這將會：\n1. 統一玩家名稱（如 lukesuhaoo → lukehsuhao）\n2. 移除 AI 玩家（如「未知」、「伊萊莎·伊卡茲」等）')) {
+      return;
+    }
+
+    setIsFixing(true);
+    try {
+      const report = await fixHistoricalData();
+      await refreshGames();
+
+      let message = `修復完成！\n檢查了 ${report.totalGames} 場遊戲`;
+      if (report.fixedGames > 0) {
+        message += `\n修正了 ${report.fixedGames} 場遊戲`;
+        if (report.renamedPlayers.length > 0) {
+          message += `\n重命名了 ${report.renamedPlayers.length} 個玩家`;
+        }
+        if (report.removedAIPlayers.length > 0) {
+          message += `\n移除了 ${report.removedAIPlayers.length} 個 AI 玩家`;
+        }
+      } else {
+        message += '\n無需修正任何資料';
+      }
+
+      showToast(message, 'success');
+      console.log('📊 完整修復報告:', report);
+    } catch (error) {
+      showToast('修復失敗，請查看 Console', 'error');
+      console.error('修復錯誤:', error);
+    } finally {
+      setIsFixing(false);
+    }
+  };
+
   if (loading) return <Loading message="載入歷史記錄..." />;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <h1 className="text-4xl font-orbitron font-bold text-dune-sand mb-8">遊戲歷史</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <h1 className="text-4xl font-orbitron font-bold text-dune-sand">遊戲歷史</h1>
+        <Button
+          onClick={handleFixData}
+          disabled={isFixing || games.length === 0}
+          variant="secondary"
+          className="text-sm"
+        >
+          {isFixing ? '🔄 修復中...' : '🔧 修復玩家名稱'}
+        </Button>
+      </div>
 
       {games.length === 0 ? (
         <Card>
