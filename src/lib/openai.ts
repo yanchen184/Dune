@@ -2,6 +2,59 @@ import OpenAI from 'openai';
 import { VisionRecognitionResult } from './types';
 import { getConfig } from './config';
 
+/**
+ * 玩家名稱別名對照表
+ * key: 各種可能的變體名稱（小寫）
+ * value: 標準化後的名稱
+ */
+const PLAYER_NAME_ALIASES: Record<string, string> = {
+  'lukesuhaoo': 'lukehsuhao',
+  'lukesuhao': 'lukehsuhao',
+  'luke_suhao': 'lukehsuhao',
+  'lukehsuhaoo': 'lukehsuhao',
+};
+
+/**
+ * AI 玩家名稱列表（需要過濾掉的非真人玩家）
+ * 這些是遊戲中的 AI/NPC 角色，不應該被計入統計
+ */
+const AI_PLAYER_NAMES: string[] = [
+  '未知',
+  '伊萊莎·伊卡茲',
+  '「公主」尤娜·莫里特尼',
+  '公主尤娜·莫里特尼',
+  '尤娜·莫里特尼',
+  'unknown',
+  'ai',
+  'bot',
+  'npc',
+];
+
+/**
+ * 檢查是否為 AI 玩家
+ * @param name - 玩家名稱
+ * @returns 是否為 AI 玩家
+ */
+function isAIPlayer(name: string): boolean {
+  if (!name) return true;
+  const lowerName = name.toLowerCase().trim();
+  return AI_PLAYER_NAMES.some(aiName =>
+    lowerName === aiName.toLowerCase() ||
+    lowerName.includes(aiName.toLowerCase())
+  );
+}
+
+/**
+ * 標準化玩家名稱
+ * @param name - 原始玩家名稱
+ * @returns 標準化後的名稱
+ */
+function normalizePlayerName(name: string): string {
+  if (!name) return name;
+  const lowerName = name.toLowerCase().trim();
+  return PLAYER_NAME_ALIASES[lowerName] || name;
+}
+
 // Get OpenAI client (lazy initialization)
 function getOpenAIClient(): OpenAI {
   const config = getConfig();
@@ -39,6 +92,20 @@ export async function analyzeGameImage(
   ],
   "confidence": 識別信心度(0-1)
 }
+
+⚠️ 重要：玩家名稱識別注意事項 ⚠️
+以下是已知的玩家名稱，請務必正確識別：
+- "lukehsuhao" 和 "lukesuhaoo" 是【同一個人】，統一使用 "lukehsuhao"
+- 注意區分相似的名稱，如果看到 "lukesuhaoo"、"lukesuhao" 等變體，都應該輸出為 "lukehsuhao"
+
+🚫 重要：以下是 AI/NPC 玩家，請【完全排除】，不要放入結果中：
+- "未知"
+- "伊萊莎·伊卡茲"
+- "「公主」尤娜·莫里特尼"
+- "公主尤娜·莫里特尼"
+- "尤娜·莫里特尼"
+- 任何看起來像是 AI 或 NPC 的名稱
+只保留真人玩家的資料！
 
 角色名稱必須使用中文，從以下選擇：
 - 亞崔迪（Atreides）
@@ -119,6 +186,33 @@ export async function analyzeGameImage(
 
     // Parse JSON response
     const result = JSON.parse(cleanedContent) as VisionRecognitionResult;
+
+    // 處理玩家資料：1. 過濾 AI 玩家 2. 標準化名稱
+    if (result.players) {
+      const originalCount = result.players.length;
+
+      result.players = result.players
+        // 過濾掉 AI/NPC 玩家
+        .filter(player => {
+          if (isAIPlayer(player.name)) {
+            console.log(`🤖 Filtered out AI player: ${player.name}`);
+            return false;
+          }
+          return true;
+        })
+        // 標準化玩家名稱
+        .map(player => ({
+          ...player,
+          name: normalizePlayerName(player.name),
+        }));
+
+      const filteredCount = originalCount - result.players.length;
+      if (filteredCount > 0) {
+        console.log(`🚫 Removed ${filteredCount} AI player(s)`);
+      }
+      console.log('🔄 Player names normalized');
+    }
+
     console.log('✅ Parsed result:', result);
     return result;
   } catch (error) {
