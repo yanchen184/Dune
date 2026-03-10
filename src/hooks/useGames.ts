@@ -7,10 +7,11 @@ export function useGames(autoFetch = true) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { getGames: fetchGames, addGame, deleteGame } = useFirebase();
+  const { getGames: fetchGames, addGame, deleteGame, migrateImageData } = useFirebase();
 
   /**
-   * Fetch all games from Firestore (60 秒超時)
+   * Fetch all games from Firestore
+   * 首次載入時自動遷移舊圖片資料，遷移後重新讀取
    */
   const refreshGames = async () => {
     setLoading(true);
@@ -20,6 +21,14 @@ export function useGames(autoFetch = true) {
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Firebase 連線超時，請檢查 Firestore 安全規則是否已過期。')), 60000)
       );
+
+      // 先嘗試自動遷移（有 flag 機制，已遷移過就跳過）
+      try {
+        await Promise.race([migrateImageData(), timeoutPromise]);
+      } catch {
+        console.warn('⚠️ Image migration skipped or failed');
+      }
+
       const fetchedGames = await Promise.race([fetchGames(), timeoutPromise]);
       setGames(fetchedGames);
     } catch (err) {

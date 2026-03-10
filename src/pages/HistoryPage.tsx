@@ -18,7 +18,7 @@ import { formatTimestamp, generateId } from '@/lib/utils';
 
 export default function HistoryPage() {
   const { games, loading, error, removeGame, refreshGames } = useGames();
-  const { updateGame, getGameImage, fixHistoricalData, migrateImageData } = useFirebase();
+  const { updateGame, getGameImage, fixHistoricalData } = useFirebase();
 
   const { showToast } = useToast();
   const { analyzeImage } = useVision();
@@ -26,7 +26,6 @@ export default function HistoryPage() {
   const [editingGame, setEditingGame] = useState<GameRecord | null>(null);
   const [viewingImage, setViewingImage] = useState<{ url: string; gameNumber: number } | null>(null);
   const [isFixing, setIsFixing] = useState(false);
-  const [isMigrating, setIsMigrating] = useState(false);
   const [reRecognizeGame, setReRecognizeGame] = useState<GameRecord | null>(null);
   const [isReAnalyzing, setIsReAnalyzing] = useState(false);
 
@@ -87,27 +86,6 @@ export default function HistoryPage() {
       console.error('修復錯誤:', error);
     } finally {
       setIsFixing(false);
-    }
-  };
-
-  /**
-   * 遷移圖片資料到獨立集合（一次性操作）
-   */
-  const handleMigrateImages = async () => {
-    if (!confirm('確定要遷移圖片資料嗎？\n\n這會把圖片從遊戲記錄中搬到獨立集合，大幅加速頁面載入。\n（只需執行一次）')) {
-      return;
-    }
-
-    setIsMigrating(true);
-    try {
-      const result = await migrateImageData();
-      await refreshGames();
-      showToast(`遷移完成！搬移了 ${result.migrated} 筆圖片資料`, 'success');
-    } catch (error) {
-      showToast('遷移失敗，請查看 Console', 'error');
-      console.error('遷移錯誤:', error);
-    } finally {
-      setIsMigrating(false);
     }
   };
 
@@ -230,24 +208,14 @@ export default function HistoryPage() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <h1 className="text-4xl font-orbitron font-bold text-dune-sand">遊戲歷史</h1>
-        <div className="flex gap-2">
-          <Button
-            onClick={handleMigrateImages}
-            disabled={isMigrating || games.length === 0}
-            variant="secondary"
-            className="text-sm"
-          >
-            {isMigrating ? '🔄 遷移中...' : '⚡ 加速載入'}
-          </Button>
-          <Button
-            onClick={handleFixData}
-            disabled={isFixing || games.length === 0}
-            variant="secondary"
-            className="text-sm"
-          >
-            {isFixing ? '🔄 修復中...' : '🔧 修復玩家名稱'}
-          </Button>
-        </div>
+        <Button
+          onClick={handleFixData}
+          disabled={isFixing || games.length === 0}
+          variant="secondary"
+          className="text-sm"
+        >
+          {isFixing ? '🔄 修復中...' : '🔧 修復玩家名稱'}
+        </Button>
       </div>
 
       {games.length === 0 ? (

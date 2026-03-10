@@ -297,27 +297,29 @@ export function useFirebase() {
 
   /**
    * 遷移舊資料：把 games 中的 imageData 搬到 gameImages 集合
-   * Reason: 減少 getGames 列表查詢的傳輸量
+   * Reason: 減少 getGames 列表查詢的傳輸量，自動執行一次
    */
-  const migrateImageData = async (): Promise<{ migrated: number; total: number }> => {
+  const migrateImageData = async (): Promise<void> => {
     const db = getDb();
-    if (!db) throw new Error('Firebase not initialized.');
+    if (!db) return;
+
+    // 檢查是否已遷移過
+    const migrationFlag = doc(db, 'settings', 'migration_done');
+    const flagSnap = await getDoc(migrationFlag);
+    if (flagSnap.exists() && flagSnap.data().imageDataMigrated) return;
 
     const gamesRef = collection(db, 'games');
     const q = query(gamesRef, orderBy('timestamp', 'desc'));
     const snapshot = await getDocs(q);
 
     let migrated = 0;
-    const total = snapshot.size;
 
     for (const docSnap of snapshot.docs) {
       const data = docSnap.data();
       if (data.imageData) {
-        // 搬到獨立集合
         const imageDocRef = doc(db, 'gameImages', docSnap.id);
         await setDoc(imageDocRef, { imageData: data.imageData });
 
-        // 從 games 文件中移除 imageData，標記 hasImage
         const gameDocRef = doc(db, 'games', docSnap.id);
         await updateDoc(gameDocRef, {
           imageData: deleteField(),
@@ -325,12 +327,15 @@ export function useFirebase() {
         });
 
         migrated++;
-        console.log(`📦 Migrated image for game ${docSnap.id} (${migrated}/${total})`);
+        console.log(`📦 Migrated image for game ${docSnap.id}`);
       }
     }
 
-    console.log(`✅ Migration complete: ${migrated}/${total} games migrated`);
-    return { migrated, total };
+    // 標記已完成遷移
+    await setDoc(migrationFlag, { imageDataMigrated: true }, { merge: true });
+    if (migrated > 0) {
+      console.log(`✅ Auto-migration complete: ${migrated} games migrated`);
+    }
   };
 
   return {
