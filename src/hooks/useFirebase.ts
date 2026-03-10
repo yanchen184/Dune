@@ -38,6 +38,10 @@ const AI_PLAYER_NAMES: string[] = [
   'ai',
   'bot',
   'npc',
+  '梅農',
+  '阿麗亞娜',
+  '保羅',
+  '雷托',
 ];
 
 /**

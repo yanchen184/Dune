@@ -20,6 +20,10 @@ const EXTRA_AI_NAMES = [
   '機器人',
   'computer',
   'cpu',
+  '梅農',
+  '阿麗亞娜',
+  '保羅',
+  '雷托',
 ];
 
 /**
