@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameRecord, PlayerRecord, RecognitionRecord } from '@/lib/types';
 import { formatTimestamp } from '@/lib/utils';
@@ -23,6 +23,15 @@ export default function ReRecognizeModal({
 }: ReRecognizeModalProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hint, setHint] = useState('');
+
+  // ESC 關閉
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!game) return null;
 
@@ -56,7 +65,15 @@ export default function ReRecognizeModal({
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
-            <div className="bg-dune-deep border-2 border-dune-spice rounded-lg p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto">
+            <div className="bg-dune-deep border-2 border-dune-spice rounded-lg p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto relative">
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 text-dune-sand/60 hover:text-dune-sand transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
               <h2 className="text-2xl font-orbitron font-bold text-dune-spice mb-2">
                 AI 識別紀錄
               </h2>
