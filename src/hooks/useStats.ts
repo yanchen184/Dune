@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { GameRecord, PlayerStats, FactionStats, DuneFaction } from '@/lib/types';
+import { isAIPlayer } from '@/lib/aiPlayers';
 
 export function useStats(games: GameRecord[]) {
   /**
@@ -10,6 +11,7 @@ export function useStats(games: GameRecord[]) {
 
     games.forEach(game => {
       game.players.forEach(player => {
+        if (isAIPlayer(player.name)) return;
         const existing = playerMap.get(player.name);
 
         if (existing) {
@@ -74,6 +76,7 @@ export function useStats(games: GameRecord[]) {
 
     games.forEach(game => {
       game.players.forEach(player => {
+        if (isAIPlayer(player.name)) return;
         const existing = factionMap.get(player.faction);
 
         if (existing) {
@@ -109,13 +112,17 @@ export function useStats(games: GameRecord[]) {
    */
   const scoreTrend = useMemo(() => {
     return games
-      .map(game => ({
-        date: game.timestamp instanceof Date
-          ? game.timestamp
-          : (game.timestamp as any).toDate(),
-        averageScore:
-          game.players.reduce((sum, p) => sum + p.score, 0) / game.players.length,
-      }))
+      .map(game => {
+        const realPlayers = game.players.filter(p => !isAIPlayer(p.name));
+        return {
+          date: game.timestamp instanceof Date
+            ? game.timestamp
+            : (game.timestamp as any).toDate(),
+          averageScore: realPlayers.length > 0
+            ? realPlayers.reduce((sum, p) => sum + p.score, 0) / realPlayers.length
+            : 0,
+        };
+      })
       .sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [games]);
 

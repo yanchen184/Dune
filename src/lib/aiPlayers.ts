@@ -43,6 +43,13 @@ export const AI_PLAYER_NAMES = [
   'Helena',  // Helena Richese 的簡稱
   'Glossu',  // Glossu Rabban 的簡稱
 
+  // 遊戲內 AI/NPC 角色
+  '未知',
+  '伊萊莎·伊卡茲',
+  '「公主」尤娜·莫里特尼',
+  '公主尤娜·莫里特尼',
+  '尤娜·莫里特尼',
+
   // 常見的 AI 標記
   'AI',
   'Bot',
@@ -65,10 +72,11 @@ export function isAIPlayer(name: string | null | undefined): boolean {
 
   const normalizedName = name.trim().toLowerCase();
 
-  // 檢查是否在黑名單中
-  return AI_PLAYER_NAMES.some(aiName =>
-    normalizedName === aiName.toLowerCase()
-  );
+  // 檢查是否在黑名單中（精確比對或包含比對）
+  return AI_PLAYER_NAMES.some(aiName => {
+    const lowerAi = aiName.toLowerCase();
+    return normalizedName === lowerAi || normalizedName.includes(lowerAi);
+  });
 }
 
 /**
