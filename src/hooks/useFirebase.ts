@@ -5,6 +5,7 @@ import {
   updateDoc,
   doc,
   getDocs,
+  getDoc,
   query,
   orderBy,
   limit,
@@ -94,6 +95,7 @@ export function useFirebase() {
 
   /**
    * Get all games or limit to a specific number
+   * Reason: 排除 imageData 欄位以大幅減少傳輸量（44 筆含圖片 = 1.8MB → 排除後 < 50KB）
    */
   const getGames = async (limitCount?: number): Promise<GameRecord[]> => {
     const db = getDb();
@@ -108,12 +110,14 @@ export function useFirebase() {
       const querySnapshot = await getDocs(q);
       const games: GameRecord[] = [];
 
-      querySnapshot.forEach(doc => {
-        const data = doc.data();
+      querySnapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        // 列表查詢時不包含 imageData，改用 hasImage 標記
+        const { imageData, ...rest } = data;
         games.push({
-          id: doc.id,
-          ...data,
-          // Convert Firestore Timestamp to ISO string for consistent date handling
+          id: docSnap.id,
+          ...rest,
+          hasImage: !!(imageData || data.imageUrl),
           timestamp: data.timestamp?.toDate?.() || data.timestamp,
           createdAt: data.createdAt?.toDate?.() || data.createdAt,
         } as GameRecord);
@@ -123,6 +127,25 @@ export function useFirebase() {
     } catch (error) {
       console.error('Error getting games:', error);
       throw new Error('Failed to fetch game records');
+    }
+  };
+
+  /**
+   * 取得單筆遊戲的圖片資料（僅在需要時才載入）
+   */
+  const getGameImage = async (gameId: string): Promise<string | null> => {
+    const db = getDb();
+    if (!db) return null;
+
+    try {
+      const gameDoc = doc(db, 'games', gameId);
+      const docSnap = await getDoc(gameDoc);
+      if (!docSnap.exists()) return null;
+      const data = docSnap.data();
+      return data.imageData || data.imageUrl || null;
+    } catch (error) {
+      console.error('Error getting game image:', error);
+      return null;
     }
   };
 
@@ -254,6 +277,7 @@ export function useFirebase() {
     deleteGame,
     updateGame,
     getGames,
+    getGameImage,
     getNextGameNumber,
     fixHistoricalData,
   };

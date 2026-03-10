@@ -63,11 +63,11 @@ export default function ReRecognizeModal({
               <div className="mb-6">
                 <Button
                   onClick={onReAnalyze}
-                  disabled={isAnalyzing || (!game.imageData && !game.imageUrl)}
+                  disabled={isAnalyzing || !game.hasImage}
                 >
                   {isAnalyzing ? '🔄 AI 分析中...' : '🤖 重新分析圖片'}
                 </Button>
-                {!game.imageData && !game.imageUrl && (
+                {!game.hasImage && (
                   <p className="text-red-400 text-sm mt-2 font-rajdhani">此遊戲無圖片，無法重新識別</p>
                 )}
               </div>

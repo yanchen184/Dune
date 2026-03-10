@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom';
 import { formatTimestamp } from '@/lib/utils';
 
 export default function HomePage() {
-  const { games, loading } = useGames();
+  const { games, loading, error } = useGames();
 
   // 計算統計數據
   const stats = useMemo(() => {
@@ -44,6 +44,26 @@ export default function HomePage() {
   }, [games]);
 
   if (loading) return <Loading message="載入遊戲數據..." />;
+
+  if (error) return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+      <h1 className="text-4xl font-orbitron font-bold text-dune-sand mb-8">Dashboard</h1>
+      <Card>
+        <div className="text-center py-8">
+          <p className="text-4xl mb-4">⚠️</p>
+          <h2 className="text-xl font-orbitron text-red-400 mb-2">連線失敗</h2>
+          <p className="text-dune-sand/70 font-rajdhani mb-4">{error}</p>
+          <p className="text-dune-sand/50 font-rajdhani text-sm mb-6">
+            請檢查 Firebase Console 的 Firestore 安全規則是否已過期
+          </p>
+          <div className="flex justify-center gap-4">
+            <Link to="/upload" className="text-dune-spice hover:underline font-rajdhani">上傳遊戲</Link>
+            <Link to="/manual" className="text-dune-spice hover:underline font-rajdhani">手動輸入</Link>
+          </div>
+        </div>
+      </Card>
+    </motion.div>
+  );
 
   const recentGames = games.slice(0, 5);
 

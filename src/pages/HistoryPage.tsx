@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useGames } from '@/hooks/useGames';
 import { useFirebase } from '@/hooks/useFirebase';
-import { useStorage } from '@/hooks/useStorage';
+
 import { useVision } from '@/hooks/useVision';
 import { useToast } from '@/hooks/useToast';
 import { GameRecord, PlayerRecord, DuneFaction, RecognitionRecord } from '@/lib/types';
@@ -16,9 +16,9 @@ import ReRecognizeModal from '@/components/common/ReRecognizeModal';
 import { formatTimestamp, generateId } from '@/lib/utils';
 
 export default function HistoryPage() {
-  const { games, loading, removeGame, refreshGames } = useGames();
-  const { updateGame, fixHistoricalData } = useFirebase();
-  const { deleteImage } = useStorage();
+  const { games, loading, error, removeGame, refreshGames } = useGames();
+  const { updateGame, getGameImage, fixHistoricalData } = useFirebase();
+
   const { showToast } = useToast();
   const { analyzeImage } = useVision();
   const [editingGame, setEditingGame] = useState<GameRecord | null>(null);
@@ -27,15 +27,10 @@ export default function HistoryPage() {
   const [reRecognizeGame, setReRecognizeGame] = useState<GameRecord | null>(null);
   const [isReAnalyzing, setIsReAnalyzing] = useState(false);
 
-  const handleDelete = async (id: string, imageUrl?: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('確定要刪除這筆記錄嗎？')) return;
 
     try {
-      // Note: Base64 images are stored in Firestore, no need to delete separately
-      // Only delete from Storage if it's a legacy imageUrl
-      if (imageUrl) {
-        await deleteImage(imageUrl);
-      }
       await removeGame(id);
       showToast('記錄已刪除', 'success');
     } catch (error) {
@@ -97,8 +92,11 @@ export default function HistoryPage() {
    */
   const handleReAnalyze = async () => {
     if (!reRecognizeGame) return;
-    const imageSource = reRecognizeGame.imageData || reRecognizeGame.imageUrl;
-    if (!imageSource) return;
+    const imageSource = await getGameImage(reRecognizeGame.id);
+    if (!imageSource) {
+      showToast('無法載入圖片', 'error');
+      return;
+    }
 
     setIsReAnalyzing(true);
     try {
@@ -187,6 +185,22 @@ export default function HistoryPage() {
 
   if (loading) return <Loading message="載入歷史記錄..." />;
 
+  if (error) return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <Card>
+        <div className="text-center py-8">
+          <p className="text-4xl mb-4">⚠️</p>
+          <h2 className="text-xl font-orbitron text-red-400 mb-2">載入失敗</h2>
+          <p className="text-dune-sand/70 font-rajdhani mb-4">{error}</p>
+          <p className="text-dune-sand/50 font-rajdhani text-sm mb-6">
+            請前往 Firebase Console 檢查 Firestore 安全規則是否已過期
+          </p>
+          <Button onClick={refreshGames}>重新載入</Button>
+        </div>
+      </Card>
+    </motion.div>
+  );
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -229,7 +243,7 @@ export default function HistoryPage() {
                         🤖 信心度: {(game.recognitionConfidence * 100).toFixed(0)}%
                       </span>
                     )}
-                    {(game.imageUrl || game.imageData) && (
+                    {game.hasImage && (
                       <span className="ml-2 text-green-400">
                         📸 有圖片
                       </span>
@@ -257,30 +271,32 @@ export default function HistoryPage() {
                 </div>
                 <div className="flex md:flex-col gap-2 flex-shrink-0">
                   <Button
-                    onClick={() => {
-                      const imageSource = game.imageData || game.imageUrl;
+                    onClick={async () => {
+                      const imageSource = await getGameImage(game.id);
                       if (imageSource) {
                         setViewingImage({ url: imageSource, gameNumber: game.gameNumber });
+                      } else {
+                        showToast('無法載入圖片', 'error');
                       }
                     }}
-                    disabled={!game.imageData && !game.imageUrl}
+                    disabled={!game.hasImage}
                     variant="secondary"
-                    title={(game.imageData || game.imageUrl) ? '查看 AI 識別圖片' : '無圖片'}
+                    title={game.hasImage ? '查看 AI 識別圖片' : '無圖片'}
                   >
                     📸 圖片
                   </Button>
                   <Button
                     onClick={() => setReRecognizeGame(game)}
-                    disabled={!game.imageData && !game.imageUrl}
+                    disabled={!game.hasImage}
                     variant="secondary"
-                    title={(game.imageData || game.imageUrl) ? '重新用 AI 分析圖片' : '無圖片'}
+                    title={game.hasImage ? '重新用 AI 分析圖片' : '無圖片'}
                   >
                     🤖 重新閱讀
                   </Button>
                   <Button onClick={() => setEditingGame(game)}>
                     編輯
                   </Button>
-                  <Button variant="danger" onClick={() => handleDelete(game.id, game.imageUrl)}>
+                  <Button variant="danger" onClick={() => handleDelete(game.id)}>
                     刪除
                   </Button>
                 </div>

@@ -50,6 +50,7 @@ export interface GameRecord {
   createdAt: Date | Timestamp;     // Record creation time (converted to Date when read from Firestore)
   recognitionConfidence?: number;  // AI confidence (0-1)
   recognitionHistory?: RecognitionRecord[];  // 歷次 AI 識別結果
+  hasImage?: boolean;              // 是否有圖片（列表用，避免載入 imageData）
 }
 
 /**
