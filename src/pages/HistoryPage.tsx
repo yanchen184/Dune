@@ -3,23 +3,29 @@ import { motion } from 'framer-motion';
 import { useGames } from '@/hooks/useGames';
 import { useFirebase } from '@/hooks/useFirebase';
 import { useStorage } from '@/hooks/useStorage';
+import { useVision } from '@/hooks/useVision';
 import { useToast } from '@/hooks/useToast';
-import { GameRecord } from '@/lib/types';
+import { GameRecord, PlayerRecord, DuneFaction, RecognitionRecord } from '@/lib/types';
+import { filterRealPlayers } from '@/lib/aiPlayers';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 import Loading from '@/components/common/Loading';
 import EditGameModal from '@/components/common/EditGameModal';
 import ImageModal from '@/components/common/ImageModal';
-import { formatTimestamp } from '@/lib/utils';
+import ReRecognizeModal from '@/components/common/ReRecognizeModal';
+import { formatTimestamp, generateId } from '@/lib/utils';
 
 export default function HistoryPage() {
   const { games, loading, removeGame, refreshGames } = useGames();
   const { updateGame, fixHistoricalData } = useFirebase();
   const { deleteImage } = useStorage();
   const { showToast } = useToast();
+  const { analyzeImage } = useVision();
   const [editingGame, setEditingGame] = useState<GameRecord | null>(null);
   const [viewingImage, setViewingImage] = useState<{ url: string; gameNumber: number } | null>(null);
   const [isFixing, setIsFixing] = useState(false);
+  const [reRecognizeGame, setReRecognizeGame] = useState<GameRecord | null>(null);
+  const [isReAnalyzing, setIsReAnalyzing] = useState(false);
 
   const handleDelete = async (id: string, imageUrl?: string) => {
     if (!confirm('確定要刪除這筆記錄嗎？')) return;
@@ -86,6 +92,99 @@ export default function HistoryPage() {
     }
   };
 
+  /**
+   * 重新用 AI 分析遊戲圖片
+   */
+  const handleReAnalyze = async () => {
+    if (!reRecognizeGame) return;
+    const imageSource = reRecognizeGame.imageData || reRecognizeGame.imageUrl;
+    if (!imageSource) return;
+
+    setIsReAnalyzing(true);
+    try {
+      // 將 base64 data URL 轉回 File 以供 analyzeImage 使用
+      const response = await fetch(imageSource);
+      const blob = await response.blob();
+      const file = new File([blob], 'reanalyze.jpg', { type: 'image/jpeg' });
+
+      const result = await analyzeImage(file);
+      if (!result) {
+        showToast('AI 識別失敗，請稍後再試', 'error');
+        return;
+      }
+
+      // 建立新的識別紀錄
+      const newPlayers: PlayerRecord[] = filterRealPlayers(
+        result.players.map(p => ({
+          name: p.name,
+          faction: p.faction as DuneFaction,
+          score: p.score,
+          spice: p.spice ?? 0,
+          coins: p.coins ?? 0,
+          isWinner: p.isWinner,
+        }))
+      );
+
+      const newRecord: RecognitionRecord = {
+        id: generateId(),
+        timestamp: new Date(),
+        players: newPlayers,
+        confidence: result.confidence,
+        isApplied: false,
+      };
+
+      // 把既有 history 中的 isApplied 保持不變，加入新結果
+      const existingHistory = reRecognizeGame.recognitionHistory || [];
+      const updatedHistory = [...existingHistory, newRecord];
+
+      await updateGame(reRecognizeGame.id, { recognitionHistory: updatedHistory });
+      await refreshGames();
+
+      // 更新 modal 中的 game 資料
+      setReRecognizeGame(prev => prev ? { ...prev, recognitionHistory: updatedHistory } : null);
+      showToast(`識別完成！信心度 ${(result.confidence * 100).toFixed(0)}%`, 'success');
+    } catch (error) {
+      console.error('重新識別失敗:', error);
+      showToast('重新識別失敗', 'error');
+    } finally {
+      setIsReAnalyzing(false);
+    }
+  };
+
+  /**
+   * 套用選擇的識別結果
+   */
+  const handleApplyRecognition = async (record: RecognitionRecord) => {
+    if (!reRecognizeGame) return;
+
+    try {
+      // 更新 history 中的 isApplied 狀態
+      const updatedHistory = (reRecognizeGame.recognitionHistory || []).map(r => ({
+        ...r,
+        isApplied: r.id === record.id,
+      }));
+
+      await updateGame(reRecognizeGame.id, {
+        players: record.players,
+        recognitionConfidence: record.confidence,
+        recognitionHistory: updatedHistory,
+      });
+      await refreshGames();
+
+      setReRecognizeGame(prev => prev ? {
+        ...prev,
+        players: record.players,
+        recognitionConfidence: record.confidence,
+        recognitionHistory: updatedHistory,
+      } : null);
+
+      showToast('已套用選擇的識別結果', 'success');
+    } catch (error) {
+      console.error('套用識別結果失敗:', error);
+      showToast('套用失敗', 'error');
+    }
+  };
+
   if (loading) return <Loading message="載入歷史記錄..." />;
 
   return (
@@ -113,7 +212,15 @@ export default function HistoryPage() {
               <div className="flex-1 flex flex-col md:flex-row justify-between items-start gap-4">
                 <div className="flex-1">
                   <h3 className="text-xl font-orbitron text-dune-spice">
-                    {game.players.find(p => p.isWinner)?.name || '未知玩家'} 用 {game.players.find(p => p.isWinner)?.faction || '未知角色'} 獲勝
+                    {(() => {
+                      const winner = game.players.find(p => p.isWinner)
+                        || (game.players.length > 0
+                          ? game.players.reduce((a, b) => a.score > b.score ? a : b)
+                          : null);
+                      return winner
+                        ? `${winner.name} 用 ${winner.faction} 獲勝`
+                        : '無玩家資料';
+                    })()}
                   </h3>
                   <p className="text-sm text-dune-sand/70 font-rajdhani">
                     {formatTimestamp(game.timestamp)} • 遊戲 #{game.gameNumber}
@@ -162,6 +269,14 @@ export default function HistoryPage() {
                   >
                     📸 圖片
                   </Button>
+                  <Button
+                    onClick={() => setReRecognizeGame(game)}
+                    disabled={!game.imageData && !game.imageUrl}
+                    variant="secondary"
+                    title={(game.imageData || game.imageUrl) ? '重新用 AI 分析圖片' : '無圖片'}
+                  >
+                    🤖 重新閱讀
+                  </Button>
                   <Button onClick={() => setEditingGame(game)}>
                     編輯
                   </Button>
@@ -187,6 +302,15 @@ export default function HistoryPage() {
         imageUrl={viewingImage?.url || null}
         gameNumber={viewingImage?.gameNumber || 0}
         onClose={() => setViewingImage(null)}
+      />
+
+      <ReRecognizeModal
+        game={reRecognizeGame}
+        isOpen={!!reRecognizeGame}
+        isAnalyzing={isReAnalyzing}
+        onClose={() => setReRecognizeGame(null)}
+        onReAnalyze={handleReAnalyze}
+        onApply={handleApplyRecognition}
       />
     </motion.div>
   );

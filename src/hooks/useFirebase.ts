@@ -212,6 +212,27 @@ export function useFirebase() {
           });
         }
 
+        // 移除 AI 玩家後，若無 winner，重新計算最高分玩家為 winner
+        if (needsUpdate && updatedPlayers.length > 0 && !updatedPlayers.some(p => p.isWinner)) {
+          const maxScore = Math.max(...updatedPlayers.map(p => p.score));
+          const topPlayers = updatedPlayers.filter(p => p.score === maxScore);
+          // 分數相同時比較 spice，再比較 coins
+          if (topPlayers.length > 1) {
+            const maxSpice = Math.max(...topPlayers.map(p => p.spice || 0));
+            const spiceTied = topPlayers.filter(p => (p.spice || 0) === maxSpice);
+            if (spiceTied.length > 1) {
+              const maxCoins = Math.max(...spiceTied.map(p => (p.coins || 0)));
+              spiceTied.filter(p => (p.coins || 0) === maxCoins).forEach(winner => {
+                winner.isWinner = true;
+              });
+            } else {
+              spiceTied.forEach(winner => { winner.isWinner = true; });
+            }
+          } else {
+            topPlayers.forEach(winner => { winner.isWinner = true; });
+          }
+        }
+
         // 如果有變更，更新資料庫
         if (needsUpdate) {
           await updateGame(game.id, { players: updatedPlayers });

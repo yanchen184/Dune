@@ -49,6 +49,7 @@ export interface GameRecord {
   players: PlayerRecord[];         // Array of player results
   createdAt: Date | Timestamp;     // Record creation time (converted to Date when read from Firestore)
   recognitionConfidence?: number;  // AI confidence (0-1)
+  recognitionHistory?: RecognitionRecord[];  // 歷次 AI 識別結果
 }
 
 /**
@@ -64,6 +65,17 @@ export interface VisionRecognitionResult {
     isWinner: boolean;
   }[];
   confidence: number;  // 0-1 confidence score
+}
+
+/**
+ * 單次 AI 識別結果紀錄
+ */
+export interface RecognitionRecord {
+  id: string;                        // 唯一識別碼
+  timestamp: Date | Timestamp;       // 識別時間
+  players: PlayerRecord[];           // 識別出的玩家資料
+  confidence: number;                // AI 信心度
+  isApplied: boolean;                // 是否為目前套用的版本
 }
 
 /**
