@@ -4,8 +4,6 @@ import { getConfig } from './config';
 
 /**
  * 玩家名稱別名對照表
- * key: 各種可能的變體名稱（小寫）
- * value: 標準化後的名稱
  */
 const PLAYER_NAME_ALIASES: Record<string, string> = {
   'lukesuhaoo': 'lukehsuhao',
@@ -16,7 +14,6 @@ const PLAYER_NAME_ALIASES: Record<string, string> = {
 
 /**
  * AI 玩家名稱列表（需要過濾掉的非真人玩家）
- * 這些是遊戲中的 AI/NPC 角色，不應該被計入統計
  */
 const AI_PLAYER_NAMES: string[] = [
   '未知',
@@ -30,11 +27,6 @@ const AI_PLAYER_NAMES: string[] = [
   'npc',
 ];
 
-/**
- * 檢查是否為 AI 玩家
- * @param name - 玩家名稱
- * @returns 是否為 AI 玩家
- */
 function isAIPlayer(name: string): boolean {
   if (!name) return true;
   const lowerName = name.toLowerCase().trim();
@@ -44,18 +36,12 @@ function isAIPlayer(name: string): boolean {
   );
 }
 
-/**
- * 標準化玩家名稱
- * @param name - 原始玩家名稱
- * @returns 標準化後的名稱
- */
 function normalizePlayerName(name: string): string {
   if (!name) return name;
   const lowerName = name.toLowerCase().trim();
   return PLAYER_NAME_ALIASES[lowerName] || name;
 }
 
-// Get OpenAI client (lazy initialization)
 function getOpenAIClient(): OpenAI {
   const config = getConfig();
   if (!config?.openaiApiKey) {
@@ -64,22 +50,14 @@ function getOpenAIClient(): OpenAI {
 
   return new OpenAI({
     apiKey: config.openaiApiKey,
-    dangerouslyAllowBrowser: true, // Required for client-side usage
+    dangerouslyAllowBrowser: true,
   });
 }
 
 /**
- * Analyzes a game result image and extracts player information
- * @param imageBase64 - Base64 encoded image string
- * @returns Promise containing player information and recognition confidence
+ * 預設的 AI 辨識 prompt（可在前端修改並存到 Firestore）
  */
-export async function analyzeGameImage(
-  imageBase64: string,
-  userHint?: string
-): Promise<VisionRecognitionResult> {
-  const prompt = `
-分析這張沙丘桌遊的結算圖片，提取以下資訊。
-${userHint ? `\n🔔 使用者補充說明（請特別注意）：\n${userHint}\n` : ''}
+export const DEFAULT_PROMPT = `分析這張沙丘桌遊的結算圖片，提取以下資訊。
 請以JSON格式返回：
 {
   "players": [
@@ -129,8 +107,23 @@ ${userHint ? `\n🔔 使用者補充說明（請特別注意）：\n${userHint}\
 
 請嘗試識別圖片中的香料(spice)和錢幣(coins)數量。
 無法識別的欄位請用 0 代替（spice 和 coins）或 null（name, faction）。
-請只返回 JSON，不要包含其他文字說明。
-`;
+請只返回 JSON，不要包含其他文字說明。`;
+
+/**
+ * Analyzes a game result image and extracts player information
+ * @param imageBase64 - Base64 encoded image string
+ * @param userHint - 使用者補充的錯誤提示
+ * @param customPrompt - 自訂 prompt（從 Firestore 讀取）
+ */
+export async function analyzeGameImage(
+  imageBase64: string,
+  userHint?: string,
+  customPrompt?: string
+): Promise<VisionRecognitionResult> {
+  const basePrompt = customPrompt || DEFAULT_PROMPT;
+  const fullPrompt = userHint
+    ? `${basePrompt}\n\n🔔 使用者補充說明（請特別注意）：\n${userHint}`
+    : basePrompt;
 
   try {
     const client = getOpenAIClient();
@@ -146,7 +139,7 @@ ${userHint ? `\n🔔 使用者補充說明（請特別注意）：\n${userHint}\
         {
           role: 'user',
           content: [
-            { type: 'text', text: prompt },
+            { type: 'text', text: fullPrompt },
             {
               type: 'image_url',
               image_url: {
@@ -157,45 +150,34 @@ ${userHint ? `\n🔔 使用者補充說明（請特別注意）：\n${userHint}\
         },
       ],
       max_tokens: 500,
-      temperature: 0.3, // Lower temperature for consistent JSON output
+      temperature: 0.3,
     });
 
     console.log('✅ OpenAI API response received');
-    console.log('📊 Response:', response);
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
-      console.error('❌ No content in response');
       throw new Error('No response from OpenAI');
     }
 
     console.log('📄 Response content:', content);
 
-    // 去除 markdown 代碼塊標記（如果存在）
     let cleanedContent = content.trim();
-
-    // 移除 ```json 和 ``` 標記
     if (cleanedContent.startsWith('```json')) {
       cleanedContent = cleanedContent.replace(/^```json\s*\n?/, '');
     } else if (cleanedContent.startsWith('```')) {
       cleanedContent = cleanedContent.replace(/^```\s*\n?/, '');
     }
-
     if (cleanedContent.endsWith('```')) {
       cleanedContent = cleanedContent.replace(/\n?```$/, '');
     }
 
-    console.log('🧹 Cleaned content:', cleanedContent);
-
-    // Parse JSON response
     const result = JSON.parse(cleanedContent) as VisionRecognitionResult;
 
-    // 處理玩家資料：1. 過濾 AI 玩家 2. 標準化名稱
     if (result.players) {
       const originalCount = result.players.length;
 
       result.players = result.players
-        // 過濾掉 AI/NPC 玩家
         .filter(player => {
           if (isAIPlayer(player.name)) {
             console.log(`🤖 Filtered out AI player: ${player.name}`);
@@ -203,7 +185,6 @@ ${userHint ? `\n🔔 使用者補充說明（請特別注意）：\n${userHint}\
           }
           return true;
         })
-        // 標準化玩家名稱
         .map(player => ({
           ...player,
           name: normalizePlayerName(player.name),
@@ -213,17 +194,12 @@ ${userHint ? `\n🔔 使用者補充說明（請特別注意）：\n${userHint}\
       if (filteredCount > 0) {
         console.log(`🚫 Removed ${filteredCount} AI player(s)`);
       }
-      console.log('🔄 Player names normalized');
     }
 
     console.log('✅ Parsed result:', result);
     return result;
   } catch (error) {
     console.error('❌ OpenAI Vision API error:', error);
-    if (error instanceof Error) {
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-    }
     throw new Error('Failed to analyze image. Please try again or enter data manually.');
   }
 }

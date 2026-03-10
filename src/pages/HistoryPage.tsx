@@ -4,6 +4,7 @@ import { useGames } from '@/hooks/useGames';
 import { useFirebase } from '@/hooks/useFirebase';
 
 import { useVision } from '@/hooks/useVision';
+import { usePrompt } from '@/hooks/usePrompt';
 import { useToast } from '@/hooks/useToast';
 import { GameRecord, PlayerRecord, DuneFaction, RecognitionRecord } from '@/lib/types';
 import { filterRealPlayers } from '@/lib/aiPlayers';
@@ -21,6 +22,7 @@ export default function HistoryPage() {
 
   const { showToast } = useToast();
   const { analyzeImage } = useVision();
+  const { prompt: savedPrompt } = usePrompt();
   const [editingGame, setEditingGame] = useState<GameRecord | null>(null);
   const [viewingImage, setViewingImage] = useState<{ url: string; gameNumber: number } | null>(null);
   const [isFixing, setIsFixing] = useState(false);
@@ -105,7 +107,7 @@ export default function HistoryPage() {
       const blob = await response.blob();
       const file = new File([blob], 'reanalyze.jpg', { type: 'image/jpeg' });
 
-      const result = await analyzeImage(file, 3, hint);
+      const result = await analyzeImage(file, 3, hint, savedPrompt);
       if (!result) {
         showToast('AI 識別失敗，請稍後再試', 'error');
         return;

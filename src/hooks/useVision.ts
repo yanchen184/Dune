@@ -9,11 +9,16 @@ export function useVision() {
 
   /**
    * Analyze image with retry mechanism
+   * @param file - 圖片檔案
+   * @param maxRetries - 最大重試次數
+   * @param userHint - 使用者補充的錯誤提示
+   * @param customPrompt - 自訂 prompt（從 Firestore 讀取）
    */
   const analyzeImage = async (
     file: File,
     maxRetries = 3,
-    userHint?: string
+    userHint?: string,
+    customPrompt?: string
   ): Promise<VisionRecognitionResult | null> => {
     setLoading(true);
     setError(null);
@@ -21,35 +26,21 @@ export function useVision() {
     let attempts = 0;
     while (attempts < maxRetries) {
       try {
-        // Convert file to base64
         const base64 = await fileToBase64(file);
-
-        // Call OpenAI Vision API
-        const result = await analyzeGameImage(base64, userHint);
-
+        const result = await analyzeGameImage(base64, userHint, customPrompt);
         setLoading(false);
         return result;
       } catch (err) {
         attempts++;
-        console.error(`❌ Vision API attempt ${attempts}/${maxRetries} failed:`);
-        console.error('Error details:', err);
-
-        // 詳細錯誤資訊
-        if (err instanceof Error) {
-          console.error('Error message:', err.message);
-          console.error('Error stack:', err.stack);
-        }
+        console.error(`❌ Vision API attempt ${attempts}/${maxRetries} failed:`, err);
 
         if (attempts >= maxRetries) {
           const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-          console.error('🚫 All retry attempts failed. Final error:', errorMessage);
           setError(errorMessage);
           setLoading(false);
           return null;
         }
 
-        console.log(`⏳ Waiting ${1000 * attempts}ms before retry...`);
-        // Wait before retry (exponential backoff)
         await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
       }
     }

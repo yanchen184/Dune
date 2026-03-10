@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useVision } from '@/hooks/useVision';
 import { useFirebase } from '@/hooks/useFirebase';
+import { usePrompt } from '@/hooks/usePrompt';
 import { useToast } from '@/hooks/useToast';
 import { Timestamp } from 'firebase/firestore';
 import { PlayerRecord, DuneFaction } from '@/lib/types';
@@ -13,6 +14,7 @@ import { compressImageToBase64, getBase64Size } from '@/lib/imageUtils';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 import Loading from '@/components/common/Loading';
+import PromptEditModal from '@/components/common/PromptEditModal';
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -24,8 +26,10 @@ export default function UploadPage() {
 
   const { analyzeImage, loading: visionLoading } = useVision();
   const { addGame, getNextGameNumber } = useFirebase();
+  const { prompt, savePrompt, resetPrompt } = usePrompt();
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const [showPromptEdit, setShowPromptEdit] = useState(false);
 
   const processFile = (selectedFile: File) => {
     const validation = validateImageFile(selectedFile, MAX_FILE_SIZE);
@@ -86,7 +90,7 @@ export default function UploadPage() {
     try {
       // 階段 1: AI 分析圖片
       setProcessingStage('AI 正在分析圖片...');
-      const result = await analyzeImage(file);
+      const result = await analyzeImage(file, 3, undefined, prompt);
 
       if (!result) {
         showToast('AI 識別失敗，請改用手動輸入', 'error');
@@ -354,8 +358,31 @@ export default function UploadPage() {
               </div>
             </div>
           </div>
+
+          {/* 編輯提示詞 */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowPromptEdit(true)}
+              className="text-dune-sand/50 hover:text-dune-spice text-sm font-rajdhani transition-colors"
+            >
+              ⚙️ 編輯 AI 辨識提示詞
+            </button>
+          </div>
         </div>
       </Card>
+      <PromptEditModal
+        isOpen={showPromptEdit}
+        prompt={prompt}
+        onClose={() => setShowPromptEdit(false)}
+        onSave={async (p) => {
+          await savePrompt(p);
+          showToast('提示詞已儲存', 'success');
+        }}
+        onReset={async () => {
+          await resetPrompt();
+          showToast('已重設為預設提示詞', 'success');
+        }}
+      />
     </motion.div>
   );
 }
