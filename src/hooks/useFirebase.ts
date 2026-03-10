@@ -126,12 +126,11 @@ export function useFirebase() {
 
       querySnapshot.forEach(docSnap => {
         const data = docSnap.data();
-        // 列表查詢時不包含 imageData，改用 hasImage 標記
         const { imageData, ...rest } = data;
         games.push({
           id: docSnap.id,
           ...rest,
-          hasImage: !!(imageData || data.imageUrl),
+          hasImage: !!(data.hasImage || imageData || data.imageUrl),
           timestamp: data.timestamp?.toDate?.() || data.timestamp,
           createdAt: data.createdAt?.toDate?.() || data.createdAt,
         } as GameRecord);
