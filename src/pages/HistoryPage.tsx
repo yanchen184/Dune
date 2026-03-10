@@ -90,7 +90,7 @@ export default function HistoryPage() {
   /**
    * 重新用 AI 分析遊戲圖片
    */
-  const handleReAnalyze = async () => {
+  const handleReAnalyze = async (hint?: string) => {
     if (!reRecognizeGame) return;
     const imageSource = await getGameImage(reRecognizeGame.id);
     if (!imageSource) {
@@ -105,7 +105,7 @@ export default function HistoryPage() {
       const blob = await response.blob();
       const file = new File([blob], 'reanalyze.jpg', { type: 'image/jpeg' });
 
-      const result = await analyzeImage(file);
+      const result = await analyzeImage(file, 3, hint);
       if (!result) {
         showToast('AI 識別失敗，請稍後再試', 'error');
         return;
@@ -129,6 +129,7 @@ export default function HistoryPage() {
         players: newPlayers,
         confidence: result.confidence,
         isApplied: false,
+        ...(hint && { hint }),
       };
 
       // 把既有 history 中的 isApplied 保持不變，加入新結果

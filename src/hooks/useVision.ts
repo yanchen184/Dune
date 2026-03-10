@@ -12,7 +12,8 @@ export function useVision() {
    */
   const analyzeImage = async (
     file: File,
-    maxRetries = 3
+    maxRetries = 3,
+    userHint?: string
   ): Promise<VisionRecognitionResult | null> => {
     setLoading(true);
     setError(null);
@@ -24,7 +25,7 @@ export function useVision() {
         const base64 = await fileToBase64(file);
 
         // Call OpenAI Vision API
-        const result = await analyzeGameImage(base64);
+        const result = await analyzeGameImage(base64, userHint);
 
         setLoading(false);
         return result;

@@ -77,6 +77,7 @@ export interface RecognitionRecord {
   players: PlayerRecord[];           // 識別出的玩家資料
   confidence: number;                // AI 信心度
   isApplied: boolean;                // 是否為目前套用的版本
+  hint?: string;                     // 使用者提供的錯誤提示
 }
 
 /**

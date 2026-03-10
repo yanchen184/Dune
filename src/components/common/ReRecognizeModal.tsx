@@ -9,7 +9,7 @@ interface ReRecognizeModalProps {
   isOpen: boolean;
   isAnalyzing: boolean;
   onClose: () => void;
-  onReAnalyze: () => void;
+  onReAnalyze: (hint?: string) => void;
   onApply: (record: RecognitionRecord) => void;
 }
 
@@ -22,6 +22,7 @@ export default function ReRecognizeModal({
   onApply,
 }: ReRecognizeModalProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hint, setHint] = useState('');
 
   if (!game) return null;
 
@@ -31,6 +32,10 @@ export default function ReRecognizeModal({
   const handleApply = () => {
     const record = history.find(r => r.id === selectedId);
     if (record) onApply(record);
+  };
+
+  const handleReAnalyze = () => {
+    onReAnalyze(hint.trim() || undefined);
   };
 
   return (
@@ -59,10 +64,25 @@ export default function ReRecognizeModal({
                 遊戲 #{game.gameNumber} - 可重新分析圖片或選擇歷史識別結果套用
               </p>
 
+              {/* 錯誤提示輸入框 */}
+              <div className="mb-4">
+                <label className="block text-dune-sand font-rajdhani text-sm mb-2">
+                  💡 告訴 AI 哪裡辨識錯了（可選）
+                </label>
+                <textarea
+                  value={hint}
+                  onChange={e => setHint(e.target.value)}
+                  placeholder="例：第二位玩家名字是 bob 不是 boo、分數應該是 8 不是 3、有 4 位玩家不是 3 位..."
+                  className="w-full bg-dune-sky/30 border border-dune-sand/30 rounded-lg p-3 text-dune-sand font-rajdhani text-sm placeholder-dune-sand/40 focus:border-dune-spice focus:outline-none resize-none"
+                  rows={2}
+                  disabled={isAnalyzing}
+                />
+              </div>
+
               {/* 重新識別按鈕 */}
               <div className="mb-6">
                 <Button
-                  onClick={onReAnalyze}
+                  onClick={handleReAnalyze}
                   disabled={isAnalyzing || !game.hasImage}
                 >
                   {isAnalyzing ? '🔄 AI 分析中...' : '🤖 重新分析圖片'}
@@ -100,7 +120,7 @@ export default function ReRecognizeModal({
                         `}
                       >
                         <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 flex-wrap">
                             <span className="text-dune-sand/70 font-rajdhani text-sm">
                               {formatTimestamp(record.timestamp)}
                             </span>
@@ -117,6 +137,11 @@ export default function ReRecognizeModal({
                             <span className="text-dune-spice text-sm">已選擇</span>
                           )}
                         </div>
+                        {record.hint && (
+                          <p className="text-dune-sand/50 text-xs font-rajdhani mb-2 italic">
+                            💡 提示：{record.hint}
+                          </p>
+                        )}
                         <PlayerList players={record.players} />
                       </div>
                     ))}

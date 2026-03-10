@@ -74,10 +74,12 @@ function getOpenAIClient(): OpenAI {
  * @returns Promise containing player information and recognition confidence
  */
 export async function analyzeGameImage(
-  imageBase64: string
+  imageBase64: string,
+  userHint?: string
 ): Promise<VisionRecognitionResult> {
   const prompt = `
 分析這張沙丘桌遊的結算圖片，提取以下資訊。
+${userHint ? `\n🔔 使用者補充說明（請特別注意）：\n${userHint}\n` : ''}
 請以JSON格式返回：
 {
   "players": [
