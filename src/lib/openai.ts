@@ -95,18 +95,19 @@ ${userHint ? `\n🔔 使用者補充說明（請特別注意）：\n${userHint}\
   "confidence": 識別信心度(0-1)
 }
 
-⚠️ 重要：玩家名稱識別注意事項 ⚠️
-以下是已知的玩家名稱，請務必正確識別：
-- "lukehsuhao" 和 "lukesuhaoo" 是【同一個人】，統一使用 "lukehsuhao"
-- 注意區分相似的名稱，如果看到 "lukesuhaoo"、"lukesuhao" 等變體，都應該輸出為 "lukehsuhao"
+⚠️⚠️⚠️ 最重要：玩家名稱修正規則 ⚠️⚠️⚠️
+有一位玩家名稱經常被辨識錯誤，請【特別注意】：
+✅ 正確名稱：「lukehsuhao」
+❌ 常見錯誤辨識：lukesuhaoo、lukesuhao、luke_suhao、lukehsuhaoo、lukeHsuhao、Lukehsuhao、lukehsuaho
+👉 規則：只要看到以「luke」開頭、包含「suhao」或「hsuhao」的任何文字，全部統一輸出為「lukehsuhao」
+👉 不論大小寫、多一個 o、少一個 h、字母順序略有不同，都是同一個人，一律輸出「lukehsuhao」
 
 🚫 重要：以下是 AI/NPC 玩家，請【完全排除】，不要放入結果中：
 - "未知"
 - "伊萊莎·伊卡茲"
-- "「公主」尤娜·莫里特尼"
-- "公主尤娜·莫里特尼"
-- "尤娜·莫里特尼"
-- 任何看起來像是 AI 或 NPC 的名稱
+- "「公主」尤娜·莫里特尼"、"公主尤娜·莫里特尼"、"尤娜·莫里特尼"
+- 玩家名稱如果等於角色名稱（如「皇帝」「弗雷曼」「亞崔迪」「哈肯能」等），那就是 AI 玩家，請排除
+- 任何看起來像是 AI、NPC、Bot 的名稱
 只保留真人玩家的資料！
 
 角色名稱必須使用中文，從以下選擇：
