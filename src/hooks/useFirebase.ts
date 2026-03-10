@@ -2,10 +2,12 @@ import {
   collection,
   addDoc,
   deleteDoc,
+  deleteField,
   updateDoc,
   doc,
   getDocs,
   getDoc,
+  setDoc,
   query,
   orderBy,
   limit,
@@ -62,14 +64,26 @@ function isAIPlayer(name: string): boolean {
 export function useFirebase() {
   /**
    * Add a new game record to Firestore
+   * Reason: imageData 存到獨立集合 gameImages 以避免列表查詢下載大量圖片資料
    */
   const addGame = async (game: Omit<GameRecord, 'id'>): Promise<string> => {
     const db = getDb();
     if (!db) throw new Error('Firebase not initialized. Please configure in Settings.');
 
     try {
+      const { imageData, ...gameWithoutImage } = game as any;
       const gamesRef = collection(db, 'games');
-      const docRef = await addDoc(gamesRef, game);
+      const docRef = await addDoc(gamesRef, {
+        ...gameWithoutImage,
+        hasImage: !!imageData,
+      });
+
+      // 圖片資料存到獨立集合
+      if (imageData) {
+        const imageDoc = doc(db, 'gameImages', docRef.id);
+        await setDoc(imageDoc, { imageData });
+      }
+
       return docRef.id;
     } catch (error) {
       console.error('Error adding game:', error);
@@ -132,16 +146,25 @@ export function useFirebase() {
 
   /**
    * 取得單筆遊戲的圖片資料（僅在需要時才載入）
+   * Reason: 優先從獨立集合 gameImages 讀取，回退到 games 文件中的舊資料
    */
   const getGameImage = async (gameId: string): Promise<string | null> => {
     const db = getDb();
     if (!db) return null;
 
     try {
-      const gameDoc = doc(db, 'games', gameId);
-      const docSnap = await getDoc(gameDoc);
-      if (!docSnap.exists()) return null;
-      const data = docSnap.data();
+      // 先查獨立集合
+      const imageDocRef = doc(db, 'gameImages', gameId);
+      const imageSnap = await getDoc(imageDocRef);
+      if (imageSnap.exists()) {
+        return imageSnap.data().imageData || null;
+      }
+
+      // 回退：舊資料可能還在 games 文件中
+      const gameDocRef = doc(db, 'games', gameId);
+      const gameSnap = await getDoc(gameDocRef);
+      if (!gameSnap.exists()) return null;
+      const data = gameSnap.data();
       return data.imageData || data.imageUrl || null;
     } catch (error) {
       console.error('Error getting game image:', error);
@@ -272,6 +295,44 @@ export function useFirebase() {
     }
   };
 
+  /**
+   * 遷移舊資料：把 games 中的 imageData 搬到 gameImages 集合
+   * Reason: 減少 getGames 列表查詢的傳輸量
+   */
+  const migrateImageData = async (): Promise<{ migrated: number; total: number }> => {
+    const db = getDb();
+    if (!db) throw new Error('Firebase not initialized.');
+
+    const gamesRef = collection(db, 'games');
+    const q = query(gamesRef, orderBy('timestamp', 'desc'));
+    const snapshot = await getDocs(q);
+
+    let migrated = 0;
+    const total = snapshot.size;
+
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data();
+      if (data.imageData) {
+        // 搬到獨立集合
+        const imageDocRef = doc(db, 'gameImages', docSnap.id);
+        await setDoc(imageDocRef, { imageData: data.imageData });
+
+        // 從 games 文件中移除 imageData，標記 hasImage
+        const gameDocRef = doc(db, 'games', docSnap.id);
+        await updateDoc(gameDocRef, {
+          imageData: deleteField(),
+          hasImage: true,
+        });
+
+        migrated++;
+        console.log(`📦 Migrated image for game ${docSnap.id} (${migrated}/${total})`);
+      }
+    }
+
+    console.log(`✅ Migration complete: ${migrated}/${total} games migrated`);
+    return { migrated, total };
+  };
+
   return {
     addGame,
     deleteGame,
@@ -280,5 +341,6 @@ export function useFirebase() {
     getGameImage,
     getNextGameNumber,
     fixHistoricalData,
+    migrateImageData,
   };
 }
